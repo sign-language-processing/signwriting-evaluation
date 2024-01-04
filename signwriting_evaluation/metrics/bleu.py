@@ -1,6 +1,8 @@
 from sacrebleu.metrics import BLEU
 
 from signwriting.tokenizer import SignWritingTokenizer
+from tqdm import tqdm
+
 from signwriting_evaluation.metrics.base import SignWritingMetric
 
 
@@ -23,3 +25,7 @@ class SignWritingBLEU(SignWritingMetric):
         hypotheses = [self.tokenize(h) for h in hypotheses]
         references = [[self.tokenize(r) for r in reference] for reference in references]
         return self.bleu.corpus_score(hypotheses, references).score / 100
+
+    def score_all(self, hypotheses: list[str], references: list[str]) -> list[list[float]]:
+        # Default implementation: call the score function for each hypothesis-reference pair
+        return [[self.score(h, r) for r in tqdm(references)] for h in hypotheses]

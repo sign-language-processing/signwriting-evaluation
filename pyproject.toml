@@ -1,6 +1,6 @@
 [project]
 name = "signwriting-evaluation"
-description = ""
+description = "Automatic Evaluation for SignWriting Machine Learning Outputs"
 version = "0.0.1"
 authors = [
     { name = "Amit Moryossef", email = "amitmoryossef@gmail.com" }

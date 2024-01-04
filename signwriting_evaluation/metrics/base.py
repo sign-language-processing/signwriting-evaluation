@@ -1,3 +1,6 @@
+from tqdm import tqdm
+
+
 class SignWritingMetric:
     """Base class for all metrics."""
 
@@ -12,7 +15,11 @@ class SignWritingMetric:
 
     def corpus_score(self, hypotheses: list[str], references: list[list[str]]) -> float:
         # Default implementation: average over sentence scores
-        return sum(self.score(r, h) for r, h in zip(references, hypotheses)) / len(references)
+        return sum(self.score(h, r) for h, r in zip(hypotheses, references)) / len(references)
+
+    def score_all(self, hypotheses: list[str], references: list[str]) -> list[list[float]]:
+        # Default implementation: call the score function for each hypothesis-reference pair
+        return [[self.score(h, r) for r in tqdm(references)] for h in hypotheses]
 
     def __str__(self):
         return self.name
