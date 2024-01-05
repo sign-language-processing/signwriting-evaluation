@@ -14,7 +14,7 @@ The method we created takes into account the following important notes and is co
 - Each part of a symbol has a different meaning, and therefore different importance. Specifically: "S12345600x600" can be broken into aspects such as kind of symbol ("123"), facing direction ("4"), angle ("5"), position ("600x600") and so on for different kinds of symbols.
 
 ### Main concept
-The evaluation process we developed is built on four main stages, each with its own intent and purposes:
+The evaluation process we developed is built on three main stages, each with its own intent and purposes:
 1. **Symbol distance function**: this function is in charge of receiving two symbols (certain parts of signs), and calculating a distance value to represent the similarity or lack of it between
    the two according to the language and sign table. Its grade and actual factors are based on the ones stated above, custom weights we chose to define the importance of different differences and more.
 2. **Distance Normalization**: the return value of the function does have a maximum value (the distance between the two poles of the table) but is not between 0-1. Therefore, we divide by the maximum distance and add an additional step of inserting the value into a non-linear function, which makes the value more clearly representing the ratio of the distance:
