@@ -31,7 +31,7 @@ disable = [
 
 [tool.setuptools]
 packages = [
-    "signwriting_evaluation"
+    "signwriting_evaluation",
     "signwriting_evaluation.metrics"
 ]
 
