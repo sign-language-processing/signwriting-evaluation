@@ -32,6 +32,7 @@ disable = [
 [tool.setuptools]
 packages = [
     "signwriting_evaluation"
+    "signwriting_evaluation.metrics"
 ]
 
 [tool.pytest.ini_options]
