@@ -4,12 +4,13 @@ from signwriting.visualizer.visualize import signwriting_to_image
 
 from signwriting_evaluation.metrics.bleu import SignWritingBLEU
 from signwriting_evaluation.metrics.chrf import SignWritingCHRF
+from signwriting_evaluation.metrics.clip import SignWritingCLIPScore
 
 
 def load_signs(signs_file: Path):
     with open(signs_file, 'r', encoding='utf-8') as signs_f:
         signs = signs_f.read().splitlines()
-    return list(set(signs))
+    return list(dict.fromkeys(signs))  # unique signs, ordered
 
 
 if __name__ == "__main__":
@@ -25,21 +26,22 @@ if __name__ == "__main__":
     metrics = [
         SignWritingBLEU(),
         SignWritingCHRF(),
+        SignWritingCLIPScore(cache_directory=None),
     ]
 
-    for specific_sign in specific_signs:
-        sign_dir = matches_dir / specific_sign
-        sign_dir.mkdir(parents=True, exist_ok=True)
-        signwriting_to_image(specific_sign).save(sign_dir / "ref.png")
+    for metric in metrics:
+        print(f"Computing {metric.name}")
+        all_scores = metric.score_all(specific_signs, all_signs)
 
-        other_signs = [sign for sign in all_signs if sign != specific_sign]
-        for metric in metrics:
+        for specific_sign, scores in zip(specific_signs, all_scores):
+            sign_dir = matches_dir / specific_sign
+            sign_dir.mkdir(parents=True, exist_ok=True)
+            signwriting_to_image(specific_sign).save(sign_dir / "ref.png")
+
             metric_dir = sign_dir / metric.name
             metric_dir.mkdir(parents=True, exist_ok=True)
 
-            print(f"Computing {metric.name} for {specific_sign}")
-            scores = metric.score_all([specific_sign], other_signs)[0]
-            closest_signs = sorted(zip(other_signs, scores), key=lambda x: x[1], reverse=True)[:10]
+            closest_signs = sorted(zip(all_signs, scores), key=lambda x: x[1], reverse=True)[1:11]
             print("Closest signs:")
             for i, (sign, score) in enumerate(closest_signs):
                 print(f"{score}: {sign}")
