@@ -36,7 +36,10 @@ disable = [
 ]
 
 [tool.pylint.typecheck]
-generated-members = ["torch.*"]
+generated-members = [
+    "torch.*",
+    "torch.nn.functional.*",
+]
 
 [tool.setuptools]
 packages = [

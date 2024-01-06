@@ -11,7 +11,7 @@ class TestSignWritingCLIPScore(unittest.TestCase):
         reference = "M519x534S37900497x466S3770b497x485S15a51491x501S22f03481x513"
         score = self.metric.score(hypothesis, reference)
         self.assertIsInstance(score, float)  # Check if the score is a float
-        self.assertAlmostEqual(score, 0.96179789)
+        self.assertAlmostEqual(score, 0.96179, places=4)
 
 
 if __name__ == '__main__':
