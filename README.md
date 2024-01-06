@@ -25,6 +25,16 @@ the more effective the evaluation metric is in capturing the nuances of sign lan
 
 ## Qualitative Evaluation
 
+### Distribution of Scores
+
+Using a sample of the corpus, we compute the any-to-any scores for each metric.
+Intuitively, we expect a good metric given any two random signs to produce a bad score, since most signs are unrelated.
+This should be reflected in the distribution of scores, which should be skewed towards lower scores.
+
+![Distribution of scores](assets/distribution/all.png)
+
+### Nearest Neighbor Search
+
 It is well-known that the SignBank corpus contains many forms of the sign for "hello".
 We carefully select some of these signs to evaluate our metrics, by looking for their closest matches in the corpus,
 which contains around 230k single signs.
@@ -50,6 +60,7 @@ For each sign and metric, either the first match is incorrect, or there is a mor
 <tr><td>10</td><td><img src='assets/matches/M533x518S2ff00482x483S15a11510x487S26500508x469/CLIPScore/9.png' /></td><td><img src='assets/matches/M533x518S2ff00482x483S15a11510x487S26500508x469/TokenizedBLEU/9.png' /></td><td><img src='assets/matches/M533x518S2ff00482x483S15a11510x487S26500508x469/CHRF/9.png' /></td><td><img src='assets/matches/M528x557S14c21473x531S2890a499x527S30a00482x482S33e00482x482/CLIPScore/9.png' /></td><td><img src='assets/matches/M528x557S14c21473x531S2890a499x527S30a00482x482S33e00482x482/TokenizedBLEU/9.png' /></td><td><img src='assets/matches/M528x557S14c21473x531S2890a499x527S30a00482x482S33e00482x482/CHRF/9.png' /></td><td><img src='assets/matches/M520x520S14c20480x484S27106505x480/CLIPScore/9.png' /></td><td><img src='assets/matches/M520x520S14c20480x484S27106505x480/TokenizedBLEU/9.png' /></td><td><img src='assets/matches/M520x520S14c20480x484S27106505x480/CHRF/9.png' /></td></tr>
 </tbody>
 </table>
+
 
 ## References
 
