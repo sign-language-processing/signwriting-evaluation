@@ -111,6 +111,7 @@ class SignWritingCLIPScore(SignWritingMetric):
         similarities = []
         for hyp_feature in hyp_features:
             hyp_batched = hyp_feature.unsqueeze(0)
+            # pylint: disable=not-callable
             similarity = torch.nn.functional.cosine_similarity(hyp_batched, ref_features)
             similarities.append(similarity.tolist())
 
