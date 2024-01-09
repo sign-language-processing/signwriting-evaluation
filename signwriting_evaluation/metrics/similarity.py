@@ -1,12 +1,12 @@
-from math import pow, sqrt, exp
-from typing import List, Tuple
+from math import sqrt, exp
+from typing import Tuple
 
 import numpy as np
 from scipy.optimize import linear_sum_assignment
+from scipy.spatial import distance as dis
 from signwriting.types import Sign, SignSymbol
 from signwriting.formats.fsw_to_sign import fsw_to_sign
-from signwriting_evaluation.signwriting_evaluation.metrics.base import SignWritingMetric
-from scipy.spatial import distance as dis
+from .base import SignWritingMetric
 
 
 class SignWritingSimilarityMetric(SignWritingMetric):
