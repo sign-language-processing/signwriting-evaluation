@@ -6,15 +6,18 @@ if __name__ == "__main__":
     signs_header = ["<td></td>"]
     metrics_header = ["<td></td>"]
 
-    rows = [[f"<td>{i}</td>"] for i in range(10)]  # 10 rows
+    rows = [[f"<td>{i + 1}</td>"] for i in range(10)]  # 10 rows
 
     for sign_dir in matches_dir.iterdir():
-        signs_header.append(f"<td colspan='2'><img src='assets/matches/{sign_dir.name}/ref.png' /></td>")
+        # pylint: disable=invalid-name
+        colspan = 0
         for metric_dir in sign_dir.iterdir():
             if metric_dir.is_dir():
+                colspan += 1
                 metrics_header.append(f"<td>{metric_dir.name}</td>")
                 for i in range(10):
                     rows[i].append(f"<td><img src='assets/matches/{sign_dir.name}/{metric_dir.name}/{i}.png' /></td>")
+        signs_header.append(f"<td colspan='{colspan}'><img src='assets/matches/{sign_dir.name}/ref.png' /></td>")
 
     print("<table style=\"text-align: center\">")
     print("<thead>")

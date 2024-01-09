@@ -19,7 +19,7 @@ class SignWritingMetric:
 
     def score_all(self, hypotheses: list[str], references: list[str]) -> list[list[float]]:
         # Default implementation: call the score function for each hypothesis-reference pair
-        return [[self.score(h, r) for r in tqdm(references)] for h in hypotheses]
+        return [[self.score(h, r) for r in references] for h in tqdm(hypotheses)]
 
     def __str__(self):
         return self.name

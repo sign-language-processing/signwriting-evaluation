@@ -12,7 +12,7 @@ class SignWritingCHRF(SignWritingMetric):
         super().__init__(name="CHRF")
 
     def score(self, hypothesis: str, reference: str) -> float:
-        return self.corpus_score([hypothesis], [[reference]])
+        return self.chrf.sentence_score(hypothesis, [reference]).score / 100
 
     def corpus_score(self, hypotheses: list[str], references: list[list[str]]) -> float:
         return self.chrf.corpus_score(hypotheses, references).score / 100

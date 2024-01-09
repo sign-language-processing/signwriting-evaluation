@@ -7,14 +7,20 @@ authors = [
 ]
 readme = "README.md"
 dependencies = [
-    "sacrebleu",
-    "signwriting @ git+https://github.com/sign-language-processing/signwriting"
+    "signwriting @ git+https://github.com/sign-language-processing/signwriting",
+    "sacrebleu", # For BLEU and chrF
+    "transformers", # For CLIP features extraction
+    "diskcache", # For CLIP features caching
+    "torch", # For CLIP
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "pylint"
+    "pylint",
+    # to plot metric evaluation results
+    "matplotlib",
+    "numpy"
 ]
 
 [tool.yapf]
@@ -29,10 +35,15 @@ disable = [
     "C0116", # Missing function or method docstring
 ]
 
+[tool.pylint.typecheck]
+generated-members = [
+    "torch.*",
+]
+
 [tool.setuptools]
 packages = [
     "signwriting_evaluation",
-    "signwriting_evaluation.metrics"
+    "signwriting_evaluation.metrics",
 ]
 
 [tool.pytest.ini_options]
