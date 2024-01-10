@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from signwriting.visualizer.visualize import signwriting_to_image
-
 from signwriting_evaluation.metrics.base import SignWritingMetric
 from signwriting_evaluation.metrics.bleu import SignWritingBLEU
 from signwriting_evaluation.metrics.chrf import SignWritingCHRF
 from signwriting_evaluation.metrics.clip import SignWritingCLIPScore
+from signwriting_evaluation.metrics.symbol_distance import SignWritingSimilarityMetric
 
 
 CURRENT_DIR = Path(__file__).parent
@@ -84,6 +84,7 @@ if __name__ == "__main__":
     print(f"Found {len(single_signs)} signs")
 
     all_metrics = [
+        SignWritingSimilarityMetric(),
         SignWritingBLEU(),
         SignWritingCHRF(),
         SignWritingCLIPScore(cache_directory=None),
