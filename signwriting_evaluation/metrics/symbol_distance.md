@@ -20,7 +20,7 @@ weights for different symbol differences.
 
 
 <p align="center">
-  <img src='/assets/equations/graph1.png' />
+  <img src='/assets/equations/graph1.png' width="20%" height="20%"/>
 </p>
 
 
@@ -32,7 +32,7 @@ $$
 matches similar parts, and using a weight calculated using the formula below, the weighted mean accounts for length differences.
 
 <p align="center">
-  <img src='/assets/equations/graph2.png' />
+  <img src='/assets/equations/graph2.png' width="20%" height="20%"/>
 </p>
 
 
