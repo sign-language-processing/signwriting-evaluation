@@ -32,8 +32,8 @@ class SignWritingSimilarityMetric(SignWritingMetric):
         self.max_distance = self.calculate_distance({"symbol": "S10000", "position": (250, 250)},
                                                     {"symbol": "S38b07", "position": (750, 750)})
 
-    def euc_distance(self, first: Tuple[int, int], second: Tuple[int, int]) -> float:
-        return sqrt(pow(first[0] - second[0], 2) + pow(first[1] - second[1], 2))
+    def get_shape_class_index(self, shape: int) -> int:
+        return next((i for i, r in enumerate(self.symbol_classes.values()) if shape in r), None)
 
     def get_attributes(self, symbol: SignSymbol) -> Tuple[int, int, int, bool]:
         shape = int(symbol['symbol'][1:4], 16)
@@ -50,8 +50,8 @@ class SignWritingSimilarityMetric(SignWritingMetric):
                     self.weight["angle"] * abs(angle1 - angle2) +
                     self.weight["parallel"] * (parallel1 != parallel2) +
                     self.weight["positional"] * dis.euclidean(hyp["position"], ref["position"]))
-        hyp_class = next((i for i, r in enumerate(self.symbol_classes.values()) if shape1 in r), None)
-        ref_class = next((i for i, r in enumerate(self.symbol_classes.values()) if shape2 in r), None)
+        hyp_class = self.get_shape_class_index(shape1)
+        ref_class = self.get_shape_class_index(shape2)
         distance = distance + abs(ref_class - hyp_class) * self.weight["class_penalty"]
         return distance
 

@@ -20,7 +20,8 @@ dev = [
     "pylint",
     # to plot metric evaluation results
     "matplotlib",
-    "numpy"
+    "numpy",
+    "scipy"
 ]
 
 [tool.yapf]
