@@ -6,7 +6,7 @@ from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance as dis
 from signwriting.types import Sign, SignSymbol
 from signwriting.formats.fsw_to_sign import fsw_to_sign
-from .base import SignWritingMetric
+from signwriting_evaluation.metrics.base import SignWritingMetric
 
 
 class SignWritingSimilarityMetric(SignWritingMetric):

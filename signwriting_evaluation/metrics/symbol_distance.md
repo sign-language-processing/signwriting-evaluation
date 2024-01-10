@@ -18,9 +18,11 @@ The evaluation process is built on three main stages, each with its own intent a
 weights for different symbol differences.
 2. Distance Normalization: Normalizes distance values using the following non-linear function for better representation.
 
+
 <p align="center">
-  <img src="https://github.com/ohadlanger/try/assets/118103585/3dab6c81-272a-48e3-8f04-9f7fed840c38" width="20%" height="20%">
+  <img src='/assets/equations/graph1.png' />
 </p>
+
 
 $$
 f(x) = x^{\frac{1}{5}}
@@ -30,8 +32,9 @@ $$
 matches similar parts, and using a weight calculated using the formula below, the weighted mean accounts for length differences.
 
 <p align="center">
-  <img src="https://github.com/ohadlanger/try/assets/118103585/3b706a19-a627-4b2e-bd9e-209506e81565" width="20%" height="20%">
+  <img src='/assets/equations/graph2.png' />
 </p>
+
 
 $$
 q\left(x\right)=\left(\frac{1.05}{1+e^{-7x+3.5}}\right)-0.025

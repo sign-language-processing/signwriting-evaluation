@@ -1,6 +1,5 @@
 import unittest
-
-from .similarity import SignWritingSimilarityMetric
+from signwriting_evaluation.metrics.symbol_distance import SignWritingSimilarityMetric
 
 
 class TestSignWritingSymbolDistance(unittest.TestCase):
