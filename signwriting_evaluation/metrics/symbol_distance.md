@@ -31,5 +31,5 @@ matches similar parts, and using a weight calculated using the formula below, th
 
 
 $$
-q\left(x\right)=
+q\left(x\right)=\left(\frac{1.05}{1+e^{-7x+3.5}}\right)-0.025
 $$
