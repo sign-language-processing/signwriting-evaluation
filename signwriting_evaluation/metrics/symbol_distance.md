@@ -18,10 +18,10 @@ The evaluation process is built on three main stages, each with its own intent a
 weights for different symbol differences.
 2. Distance Normalization: Normalizes distance values using the following non-linear function for better representation.
 
-![Graph of f(x) = x^{\frac{1}{5}}](/assets/equations/graph1.png)
+![Graph of f(x) = x^{\frac{1}{3}}](/assets/equations/graph1.png)
 
 $$
-f(x) = x^{\frac{1}{5}}
+f(x) = x^{\frac{1}{3}}
 $$
 
 3. Matching and Grading: Utilizes symbol distances to generalize similarity for entire signs. The Hungarian algorithm
