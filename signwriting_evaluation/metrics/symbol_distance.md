@@ -27,9 +27,9 @@ $$
 3. Matching and Grading: Utilizes symbol distances to generalize similarity for entire signs. The Hungarian algorithm
 matches similar parts, and using a weight calculated using the formula below, the weighted mean accounts for length differences.
 
-![Graph of f(x) = \left(\frac{1.05}{1+e^{-7x+3.5}}\right)-0.025](/assets/equations/graph2.png)
+![Graph of f(x) = x^{\frac{3}{2}}](/assets/equations/graph2.png)
 
 
 $$
-q\left(x\right)=\left(\frac{1.05}{1+e^{-7x+3.5}}\right)-0.025
+f(x) = x^{\frac{3}{2}}
 $$
