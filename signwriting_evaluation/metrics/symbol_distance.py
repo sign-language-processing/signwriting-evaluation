@@ -1,4 +1,3 @@
-from math import sqrt, exp
 from typing import Tuple
 
 import numpy as np
@@ -13,9 +12,12 @@ class SignWritingSimilarityMetric(SignWritingMetric):
     def __init__(self):
         super().__init__("SymbolsDistances")
         self.symbol_classes = {
-            'hand_shapes': range(0x100, 0x205),
-            'contact_symbols': range(0x205, 0x2FF),
-            'etc': range(0x2FF, 0x38C)
+            'hands_shapes': range(0x100, 0x205),
+            'contact_symbols': range(0x205, 0x221),
+            'movement_paths': range(0x221, 0x2FF),
+            'head_movement': range(0x2FF, 0x30A),
+            'facial_expressions': range(0x30A, 0x36A),
+            'etc': range(0x36A, 0x38C)
         }
         self.weight = {
             "shape": 5,  # same weight as switching parallelization
@@ -23,12 +25,16 @@ class SignWritingSimilarityMetric(SignWritingMetric):
             "angle": 5/24,  # lowest importance out of the criteria
             "parallel": 5,  # parallelization is 3 columns compare to 1 for the facing direction
             "positional": 1/10,  # may be big values
-            "normalized_factor": 1 / 3,  # fitting shape of function
+            "normalized_factor": 1 / 2.5,  # fitting shape of function
             "exp_factor": 1.5,  # exponential distribution
-            "class_penalty": 250,  # big penalty for each class type passed
+            "class_penalty": 100,  # big penalty for each class type passed
         }
         self.max_distance = self.calculate_distance({"symbol": "S10000", "position": (250, 250)},
                                                     {"symbol": "S38b07", "position": (750, 750)})
+
+    def get_shape_class_index(self, symbol_attribute) -> int:
+        shape = symbol_attribute[0]
+        return next((i for i, r in enumerate(self.symbol_classes.values()) if shape in r), None)
 
     def get_attributes(self, symbol: SignSymbol) -> Tuple[int, int, int, bool]:
         shape = int(symbol['symbol'][1:4], 16)
@@ -37,19 +43,22 @@ class SignWritingSimilarityMetric(SignWritingMetric):
         parallel = facing > 2
         return shape, facing, angle, parallel
 
+    def weight_vector(self, vector: Tuple[int, int, int, bool]) -> Tuple[float, ...]:
+        weights = [self.weight["shape"], self.weight["angle"], self.weight["facing"], self.weight["parallel"]]
+        weighted_values = [float(val * weight) for val, weight in zip(vector, weights)]
+        return tuple(weighted_values)
+
+    # return to this
+
     def calculate_distance(self, hyp: SignSymbol, ref: SignSymbol) -> float:
         hyp_veq = self.get_attributes(hyp)
         ref_veq = self.get_attributes(ref)
 
-        hyp_class = next((i for i, r in enumerate(self.symbol_classes.values()) if hyp_veq[0] in r), None)
-        ref_class = next((i for i, r in enumerate(self.symbol_classes.values()) if ref_veq[0] in r), None)
+        hyp_class = self.get_shape_class_index(hyp_veq)
+        ref_class = self.get_shape_class_index(ref_veq)
 
-        hyp_veq = tuple(val * weight for val, weight in zip(hyp_veq, [self.weight["shape"], self.weight["angle"],
-                                                                      self.weight["facing"], self.weight["parallel"],
-                                                                      self.weight["positional"]]))
-        ref_veq = tuple(val * weight for val, weight in zip(ref_veq, [self.weight["shape"], self.weight["angle"],
-                                                                      self.weight["facing"], self.weight["parallel"],
-                                                                      self.weight["positional"]]))
+        hyp_veq = self.weight_vector(hyp_veq)
+        ref_veq = self.weight_vector(ref_veq)
         distance = (dis.euclidean(hyp_veq, ref_veq) +
                     self.weight["positional"] * dis.euclidean(hyp["position"], ref["position"]))
         distance = distance + abs(hyp_class - ref_class) * self.weight["class_penalty"]
