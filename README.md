@@ -19,10 +19,10 @@ the more effective the evaluation metric is in capturing the nuances of sign lan
 
 ## Evaluation Metrics
 
-- ✅ [Tokenized BLEU](signwriting_evaluation/metrics/bleu.py) - BLEU score for tokenized SignWriting FSW strings.
-- ✅ [chrF](signwriting_evaluation/metrics/chrf.py) - chrF score for untokenized SignWriting FSW strings.
-- ✅ [CLIPScore](signwriting_evaluation/metrics/clipscore.py) - CLIPScore between SignWriting images. (Using the original CLIP model)
-- ✅ [SymbolDistance](signwriting_evaluation/metrics/symbol_distance.py) - symbol distance score for SignWriting FSW strings [(README)](signwriting_evaluation/metrics/symbol_distance.md).
+- [Tokenized BLEU](signwriting_evaluation/metrics/bleu.py) - BLEU score for tokenized SignWriting FSW strings.
+- [chrF](signwriting_evaluation/metrics/chrf.py) - chrF score for untokenized SignWriting FSW strings.
+- [CLIPScore](signwriting_evaluation/metrics/clipscore.py) - CLIPScore between SignWriting images. (Using the original CLIP model)
+- [SymbolDistance](signwriting_evaluation/metrics/symbol_distance.py) - symbol distance score for SignWriting FSW strings [(README)](signwriting_evaluation/metrics/symbol_distance.md).
 
 ## Qualitative Evaluation
 
@@ -66,19 +66,18 @@ For each sign and metric, either the first match is incorrect, or there is a mor
 ## References
 
 [^1]: Amit Moryossef, Zifan Jiang.
-
-2023. [SignBank+: Multilingual Sign Language Translation Dataset](https://arxiv.org/abs/2309.11566).
-      [^2]: Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu.
-2002. [Bleu: a Method for Automatic Evaluation of Machine Translation](https://aclanthology.org/P02-1040/). In
+      2023. [SignBank+: Preparing a Multilingual Sign Language Dataset for Machine Translation Using Large Language Models](https://arxiv.org/abs/2309.11566).
+[^2]: Kishore Papineni, Salim Roukos, Todd Ward, and Wei-Jing Zhu.
+      2002. [Bleu: a Method for Automatic Evaluation of Machine Translation](https://aclanthology.org/P02-1040/). In
       Proceedings of the 40th Annual Meeting of the Association for Computational Linguistics, pages 311–318,
       Philadelphia,
       Pennsylvania, USA. Association for Computational Linguistics.
-      [^3]: Maja Popović.
-2015. [chrF: character n-gram F-score for automatic MT evaluation](https://aclanthology.org/W15-3049/). In Proceedings
+[^3]: Maja Popović.
+      2015. [chrF: character n-gram F-score for automatic MT evaluation](https://aclanthology.org/W15-3049/). In Proceedings
       of the Tenth Workshop on Statistical Machine Translation, pages 392–395, Lisbon, Portugal. Association for
       Computational
       Linguistics.
-      [^4]: Jack Hessel, Ari Holtzman, Maxwell Forbes, Ronan Le Bras, and Yejin Choi.
-2021. [CLIPScore: A Reference-free Evaluation Metric for Image Captioning](https://aclanthology.org/2021.emnlp-main.595/).
+[^4]: Jack Hessel, Ari Holtzman, Maxwell Forbes, Ronan Le Bras, and Yejin Choi.
+      2021. [CLIPScore: A Reference-free Evaluation Metric for Image Captioning](https://aclanthology.org/2021.emnlp-main.595/).
       In Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing, pages 7514–7528, Online
       and Punta Cana, Dominican Republic. Association for Computational Linguistics.
