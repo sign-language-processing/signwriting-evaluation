@@ -1,5 +1,5 @@
 import unittest
-from signwriting_evaluation.metrics.symbol_distance import SignWritingSimilarityMetric
+from signwriting_evaluation.metrics.similarity import SignWritingSimilarityMetric
 
 
 class TestSignWritingSymbolDistance(unittest.TestCase):
@@ -13,12 +13,14 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         self.assertIsInstance(score, float)  # Check if the score is a float
         self.assertAlmostEqual(score, 0.5509574768254414)
 
+    def test_score_jumbled_sign(self):
         hypothesis = "M530x538S37602508x462S15a11493x494S20e00488x510S22f03469x517"
         reference = "M530x538S22f03469x517S37602508x462S20e00488x510S15a11493x494"
         score = self.metric.score(hypothesis, reference)
         self.assertIsInstance(score, float)  # Check if the score is a float
         self.assertAlmostEqual(score, 1)
 
+    def test_different_shape(self):
         hypothesis = "M530x538S17600508x462S15a11493x494S20e00488x510S22f03469x517"
         reference = "M530x538S17600508x462S12a11493x494S20e00488x510S22f13469x517"
         score = self.metric.score(hypothesis, reference)

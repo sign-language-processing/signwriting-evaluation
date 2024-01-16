@@ -22,7 +22,7 @@ the more effective the evaluation metric is in capturing the nuances of sign lan
 - [Tokenized BLEU](signwriting_evaluation/metrics/bleu.py) - BLEU score for tokenized SignWriting FSW strings.
 - [chrF](signwriting_evaluation/metrics/chrf.py) - chrF score for untokenized SignWriting FSW strings.
 - [CLIPScore](signwriting_evaluation/metrics/clipscore.py) - CLIPScore between SignWriting images. (Using the original CLIP model)
-- [SymbolDistance](signwriting_evaluation/metrics/symbol_distance.py) - symbol distance score for SignWriting FSW strings [(README)](signwriting_evaluation/metrics/symbol_distance.md).
+- [Similarity](signwriting_evaluation/metrics/similarity.py) - symbol distance score for SignWriting FSW strings [(README)](signwriting_evaluation/metrics/similarity).
 
 ## Qualitative Evaluation
 

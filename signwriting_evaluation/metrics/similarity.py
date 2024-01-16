@@ -21,10 +21,10 @@ class SignWritingSimilarityMetric(SignWritingMetric):
         }
         self.weight = {
             "shape": 5,  # same weight as switching parallelization
-            "facing": 5/3,  # more important than angle, not as much as shape and orientation
-            "angle": 5/24,  # lowest importance out of the criteria
+            "facing": 5 / 3,  # more important than angle, not as much as shape and orientation
+            "angle": 5 / 24,  # lowest importance out of the criteria
             "parallel": 5,  # parallelization is 3 columns compare to 1 for the facing direction
-            "positional": 1/10,  # may be big values
+            "positional": 1 / 10,  # may be big values
             "normalized_factor": 1 / 2.5,  # fitting shape of function
             "exp_factor": 1.5,  # exponential distribution
             "class_penalty": 100,  # big penalty for each class type passed
