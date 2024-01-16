@@ -8,8 +8,7 @@ from signwriting_evaluation.metrics.base import SignWritingMetric
 from signwriting_evaluation.metrics.bleu import SignWritingBLEU
 from signwriting_evaluation.metrics.chrf import SignWritingCHRF
 from signwriting_evaluation.metrics.clip import SignWritingCLIPScore
-from signwriting_evaluation.metrics.symbol_distance import SignWritingSimilarityMetric
-
+from signwriting_evaluation.metrics.similarity import SignWritingSimilarityMetric
 
 CURRENT_DIR = Path(__file__).parent
 ASSETS_DIR = CURRENT_DIR.parent.parent / "assets"
@@ -69,7 +68,11 @@ def metrics_distribution(signs: list[str], metrics: list[SignWritingMetric]):
         plt.savefig(distribution_dir / f"{metric_name}.png")
         plt.close()
 
-    bins = np.linspace(0, 1, 100)
+    min_score = min(min(scores) for scores in metric_scores.values())
+    max_score = max(max(scores) for scores in metric_scores.values())
+    num_bins = int(100 * (max_score - min_score))
+
+    bins = np.linspace(min_score, max_score, num_bins)
     for metric_name, scores in metric_scores.items():
         plt.hist(scores, bins=bins, alpha=0.5, label=metric_name)
     plt.legend(loc="upper right")
@@ -84,10 +87,10 @@ if __name__ == "__main__":
     print(f"Found {len(single_signs)} signs")
 
     all_metrics = [
+        SignWritingCLIPScore(),
         SignWritingSimilarityMetric(),
         SignWritingBLEU(),
         SignWritingCHRF(),
-        SignWritingCLIPScore(cache_directory=None),
     ]
 
     metrics_distribution(single_signs, all_metrics)

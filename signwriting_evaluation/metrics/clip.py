@@ -1,17 +1,21 @@
+import hashlib
 import tempfile
+from typing import Union
 
 import diskcache
 import torch
 from PIL import Image
 from signwriting.visualizer.visualize import signwriting_to_image
 from tqdm import tqdm
-from transformers import CLIPProcessor, CLIPModel
+from transformers import AutoModel, AutoProcessor
 
 from signwriting_evaluation.metrics.base import SignWritingMetric
 
+CLIPInput = Union[str, Image.Image]
 
-def signwriting_to_clip_image(fsw: str, size=224) -> Image:
-    img = signwriting_to_image(fsw)
+
+def signwriting_to_clip_image(signwriting: CLIPInput, size=224) -> Image:
+    img = signwriting_to_image(signwriting) if isinstance(signwriting, str) else signwriting
     new_img = Image.new('RGB', (size, size), (255, 255, 255))
 
     if img.width > size or img.height > size:
@@ -23,17 +27,23 @@ def signwriting_to_clip_image(fsw: str, size=224) -> Image:
     offset = (x_offset, y_offset)
 
     # Paste the output_im image onto the white background
-    new_img.paste(img, offset, img)
+    if img.mode == 'RGBA':
+        new_img.paste(img, offset, img)
+    else:
+        new_img.paste(img, offset)
     return new_img
 
 
 class SignWritingCLIPScore(SignWritingMetric):
-    def __init__(self, cache_directory=f"{tempfile.gettempdir()}/clip_cache", device=None):
+    def __init__(self,
+                 cache_directory=f"{tempfile.gettempdir()}/clip_cache",
+                 model_id="openai/clip-vit-base-patch32",
+                 device=None):
         super().__init__(name="CLIPScore")
 
         # Init CLIP model
-        self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-        self.processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+        self.model = AutoModel.from_pretrained(model_id)
+        self.processor = AutoProcessor.from_pretrained(model_id)
 
         # Init cache
         if cache_directory is None:
@@ -68,43 +78,50 @@ class SignWritingCLIPScore(SignWritingMetric):
             self.batch_size = 16
         return self
 
-    def get_clip_features_batch(self, batch: list[str]):
-        images = [signwriting_to_clip_image(text) for text in batch]
+    def get_clip_features_batch(self, batch: list[CLIPInput]):
+        images = [signwriting_to_clip_image(item) for item in batch]
 
         pixels = self.processor(images=images, return_tensors="pt")["pixel_values"].to(self.model.device)
         with torch.no_grad():
             img_features = self.model.get_image_features(pixels)
         img_features_normalized = img_features / img_features.norm(p=2, dim=-1, keepdim=True)
-        for i, text in enumerate(batch):
-            self.cache[text] = img_features_normalized[i].cpu()
-            self.cached_texts.add(text)
+        for i, item in enumerate(batch):
+            cache_name = self.cache_name(item)
+            self.cache[cache_name] = img_features_normalized[i].cpu()
+            self.cached_texts.add(cache_name)
 
-    def get_clip_features(self, texts: list[str]):
-        missing_texts = [text for text in texts if text not in self.cached_texts]
+    def cache_name(self, clip_input: CLIPInput):
+        if isinstance(clip_input, Image.Image):
+            return hashlib.md5(clip_input.tobytes()).hexdigest()
+        return clip_input
 
-        if len(missing_texts) > 0:
-            pbar_disable = len(missing_texts) < self.batch_size
-            pbar = tqdm(total=len(texts), initial=len(texts) - len(missing_texts),
+    def get_clip_features(self, inputs: list[CLIPInput]):
+        missing = [clip_input for clip_input in inputs if self.cache_name(clip_input) not in self.cached_texts]
+
+        if len(missing) > 0:
+            pbar_disable = len(missing) < self.batch_size
+            pbar = tqdm(total=len(inputs), initial=len(inputs) - len(missing),
                         desc="Computing CLIP features", disable=pbar_disable)
 
             # pylint: disable=fixme
             # TODO: we could parallelize this if it's too slow for practical use
-            batches = (missing_texts[i:i + self.batch_size] for i in range(0, len(missing_texts), self.batch_size))
+            batches = (missing[i:i + self.batch_size] for i in range(0, len(missing), self.batch_size))
             for batch in batches:
                 self.get_clip_features_batch(batch)
                 pbar.update(len(batch))
 
             pbar.close()
 
-        texts = tqdm(texts, desc="Loading features cache", disable=len(texts) < self.batch_size)
-        features = torch.stack([self.cache[text] for text in texts])
+        texts = tqdm(inputs, desc="Loading features cache", disable=len(inputs) < self.batch_size)
+        cached_features = [self.cache[self.cache_name(text)].cpu() for text in texts]
+        features = torch.stack(cached_features)
 
         return features.to(self.model.device)
 
-    def score(self, hypothesis: str, reference: str) -> float:
+    def score(self, hypothesis: CLIPInput, reference: CLIPInput) -> float:
         return self.score_all([hypothesis], [reference])[0][0]
 
-    def score_all(self, hypotheses: list[str], references: list[str]) -> list[list[float]]:
+    def score_all(self, hypotheses: list[CLIPInput], references: list[CLIPInput]) -> list[list[float]]:
         hyp_features = self.get_clip_features(hypotheses)
         ref_features = self.get_clip_features(references)
 
