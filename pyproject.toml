@@ -7,7 +7,7 @@ authors = [
 ]
 readme = "README.md"
 dependencies = [
-    "signwriting @ git+https://github.com/sign-language-processing/signwriting",
+    "signwriting @ git+https://github.com/sign-language-processing/signwriting", # For Symbol Distance
     "sacrebleu", # For BLEU and chrF
     "transformers", # For CLIP features extraction
     "diskcache", # For CLIP features caching
@@ -20,7 +20,8 @@ dev = [
     "pylint",
     # to plot metric evaluation results
     "matplotlib",
-    "numpy"
+    "numpy",
+    "scipy"
 ]
 
 [tool.yapf]
