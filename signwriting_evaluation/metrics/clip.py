@@ -15,8 +15,18 @@ CLIPInput = Union[str, Image.Image]
 
 
 def signwriting_to_clip_image(signwriting: CLIPInput, size=224) -> Image:
-    img = signwriting_to_image(signwriting) if isinstance(signwriting, str) else signwriting
     new_img = Image.new('RGB', (size, size), (255, 255, 255))
+
+    if isinstance(signwriting, str):
+        try:
+            img = signwriting_to_image(signwriting)
+        except ValueError as value_error:
+            # This may happen when the M box maximum values are lower
+            # than the symbols minimum values
+            print(value_error)
+            return new_img
+    else:
+        img = signwriting
 
     if img.width > size or img.height > size:
         return new_img
@@ -99,7 +109,7 @@ class SignWritingCLIPScore(SignWritingMetric):
         missing = [clip_input for clip_input in inputs if self.cache_name(clip_input) not in self.cached_texts]
 
         if len(missing) > 0:
-            pbar_disable = len(missing) < self.batch_size
+            pbar_disable = len(missing) <= self.batch_size
             pbar = tqdm(total=len(inputs), initial=len(inputs) - len(missing),
                         desc="Computing CLIP features", disable=pbar_disable)
 
@@ -112,7 +122,7 @@ class SignWritingCLIPScore(SignWritingMetric):
 
             pbar.close()
 
-        texts = tqdm(inputs, desc="Loading features cache", disable=len(inputs) < self.batch_size)
+        texts = tqdm(inputs, desc="Loading features cache", disable=len(inputs) <= self.batch_size)
         cached_features = [self.cache[self.cache_name(text)].cpu() for text in texts]
         features = torch.stack(cached_features)
 
