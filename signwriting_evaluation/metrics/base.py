@@ -17,9 +17,17 @@ class SignWritingMetric:
         all_scores = self.score_all([hypothesis], references)
         return max(max(scores) for scores in all_scores)
 
+    def validate_corpus_score_input(self, hypotheses: list[str], references: list[list[str]]):
+        # This method is designed to avoid mistakes in the use of the corpus_score method
+        for reference in references:
+            assert len(hypotheses) == len(reference), \
+                "Hypothesis and reference must have the same number of instances"
+
     def corpus_score(self, hypotheses: list[str], references: list[list[str]]) -> float:
         # Default implementation: average over sentence scores
-        return sum(self.score_max(h, r) for h, r in zip(hypotheses, references)) / len(references)
+        self.validate_corpus_score_input(hypotheses, references)
+        transpose_references = list(zip(*references))
+        return sum(self.score_max(h, r) for h, r in zip(hypotheses, transpose_references)) / len(hypotheses)
 
     def score_all(self, hypotheses: list[str], references: list[str]) -> list[list[float]]:
         # Default implementation: call the score function for each hypothesis-reference pair

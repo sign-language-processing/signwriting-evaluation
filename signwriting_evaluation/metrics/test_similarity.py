@@ -31,7 +31,7 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         hypothesis = "M530x538S17600508x462S15a11493x494S20e00488x510S22f03469x517"
         good_reference = "M530x538S17600508x462S12a11493x494S20e00488x510S22f13469x517"
         bad_reference = "M530x538S17600508x462"
-        score = self.metric.corpus_score([hypothesis], [[good_reference, bad_reference]])
+        score = self.metric.corpus_score([hypothesis], [[good_reference], [bad_reference]])
         self.assertIsInstance(score, float)
         self.assertAlmostEqual(score, 0.8326259781509948)
 
