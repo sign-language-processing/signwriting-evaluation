@@ -24,10 +24,11 @@ class TestSignWritingCLIPScore(unittest.TestCase):
         self.assertIsInstance(score, float)  # Check if the score is a float
         self.assertAlmostEqual(score, 0.7759, places=2)
 
-    def test_bad_fsw_is_empty_image(self):
+    def test_bad_fsw_is_not_an_empty_image(self):
         fsw = "M530x538S37602531x539"
         image = signwriting_to_clip_image(fsw)
-        self.assertTrue(np.alltrue(np.array(image) == 255))
+        self.assertTrue(np.any(np.array(image) != 255))
+
 
 if __name__ == '__main__':
     unittest.main()

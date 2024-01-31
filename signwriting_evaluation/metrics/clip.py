@@ -19,7 +19,7 @@ def signwriting_to_clip_image(signwriting: CLIPInput, size=224) -> Image:
 
     if isinstance(signwriting, str):
         try:
-            img = signwriting_to_image(signwriting)
+            img = signwriting_to_image(signwriting, trust_box=False)
         except ValueError as value_error:
             # This may happen when the M box maximum values are lower
             # than the symbols minimum values
