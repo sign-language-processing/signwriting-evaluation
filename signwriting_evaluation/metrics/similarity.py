@@ -3,8 +3,10 @@ from typing import Tuple
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance as dis
-from signwriting.types import Sign, SignSymbol
 from signwriting.formats.fsw_to_sign import fsw_to_sign
+from signwriting.tokenizer import normalize_signwriting
+from signwriting.types import Sign, SignSymbol
+
 from signwriting_evaluation.metrics.base import SignWritingMetric
 
 
@@ -95,8 +97,28 @@ class SignWritingSimilarityMetric(SignWritingMetric):
         length_weight = pow(length_error, self.weight["exp_factor"])
         return length_weight + mean_cost * (1 - length_weight)
 
-    def score(self, hypothesis: str, reference: str) -> float:
+    def score_single_sign(self, hypothesis: str, reference: str) -> float:
         # Calculate the evaluate score for a given hypothesis and ref.
         hyp = fsw_to_sign(hypothesis)
         ref = fsw_to_sign(reference)
         return pow(1 - self.error_rate(hyp, ref), 2)
+
+    def score(self, hypothesis: str, reference: str) -> float:
+        # Here, hypothesis and reference are both FSW strings of potentially different number of signs
+        hypothesis_signs = normalize_signwriting(hypothesis).split(" ")
+        reference_signs = normalize_signwriting(reference).split(" ")
+        if len(hypothesis_signs) == 1 and len(reference_signs) == 1:
+            return self.score_single_sign(hypothesis, reference)
+
+        # Pad with empty strings to make sure the number of signs is the same
+        if len(hypothesis_signs) != len(reference_signs):
+            max_length = max(len(hypothesis_signs), len(reference_signs))
+            hypothesis_signs += [""] * (max_length - len(hypothesis_signs))
+            reference_signs += [""] * (max_length - len(reference_signs))
+
+        # Match each hypothesis sign with each reference sign
+        cost_matrix = self.score_all(hypothesis_signs, reference_signs)
+        row_ind, col_ind = linear_sum_assignment(cost_matrix)
+        pairs = list(zip(row_ind, col_ind))
+        values = [cost_matrix[row][col] for row, col in pairs]
+        return sum(values) / len(values)

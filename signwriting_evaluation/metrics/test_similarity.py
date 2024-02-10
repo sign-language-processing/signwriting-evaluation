@@ -1,4 +1,5 @@
 import unittest
+
 from signwriting_evaluation.metrics.similarity import SignWritingSimilarityMetric
 
 
@@ -34,6 +35,14 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         score = self.metric.corpus_score([hypothesis], [[good_reference], [bad_reference]])
         self.assertIsInstance(score, float)
         self.assertAlmostEqual(score, 0.8326259781509948)
+
+    def test_multi_sign_score(self):
+        hypothesis_single = "M530x538S17600508x462S15a11493x494S20e00488x510S22f03469x517"
+        hypothesis = f"{hypothesis_single} {hypothesis_single}"
+        reference = "M530x538S17600508x462S12a11493x494S20e00488x510S22f13469x517"
+        score = self.metric.score(hypothesis, reference)
+        self.assertIsInstance(score, float)
+        self.assertAlmostEqual(score, 0.8326259781509948 / 2)
 
     def test_bad_fsw_equals_0(self):
         bad_fsw = "M<s><s>M<s>p483"
