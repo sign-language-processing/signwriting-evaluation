@@ -35,6 +35,12 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         self.assertIsInstance(score, float)
         self.assertAlmostEqual(score, 0.8326259781509948)
 
+    def test_bad_fsw_equals_0(self):
+        bad_fsw = "M<s><s>M<s>p483"
+        score = self.metric.corpus_score([bad_fsw], [[bad_fsw]])
+        self.assertIsInstance(score, float)
+        self.assertAlmostEqual(score, 0)
+
 
 if __name__ == '__main__':
     unittest.main()

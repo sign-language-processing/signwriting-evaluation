@@ -80,7 +80,7 @@ class SignWritingSimilarityMetric(SignWritingMetric):
 
     def error_rate(self, hyp: Sign, ref: Sign) -> float:
         # Calculate the evaluate score for a given hypothesis and ref.
-        if (not hyp["symbols"] and ref["symbols"]) or (hyp["symbols"] and not ref["symbols"]):
+        if not hyp["symbols"] or not ref["symbols"]:
             return 1
         cost_matrix = np.array(
             [self.symbols_score(first, second) for first in hyp["symbols"] for second in ref["symbols"]])
