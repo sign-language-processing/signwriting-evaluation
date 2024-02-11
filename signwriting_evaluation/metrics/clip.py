@@ -105,11 +105,11 @@ class SignWritingCLIPScore(SignWritingMetric):
             return hashlib.md5(clip_input.tobytes()).hexdigest()
         return clip_input
 
-    def get_clip_features(self, inputs: list[CLIPInput]):
+    def get_clip_features(self, inputs: list[CLIPInput], progress_bar=True):
         missing = [clip_input for clip_input in inputs if self.cache_name(clip_input) not in self.cached_texts]
 
         if len(missing) > 0:
-            pbar_disable = len(missing) <= self.batch_size
+            pbar_disable = not progress_bar or len(missing) <= self.batch_size
             pbar = tqdm(total=len(inputs), initial=len(inputs) - len(missing),
                         desc="Computing CLIP features", disable=pbar_disable)
 
@@ -122,7 +122,8 @@ class SignWritingCLIPScore(SignWritingMetric):
 
             pbar.close()
 
-        texts = tqdm(inputs, desc="Loading features cache", disable=len(inputs) <= self.batch_size)
+        texts = tqdm(inputs, desc="Loading features cache",
+                     disable=not progress_bar or len(inputs) <= self.batch_size)
         cached_features = [self.cache[self.cache_name(text)].cpu() for text in texts]
         features = torch.stack(cached_features)
 
@@ -131,9 +132,10 @@ class SignWritingCLIPScore(SignWritingMetric):
     def score(self, hypothesis: CLIPInput, reference: CLIPInput) -> float:
         return self.score_all([hypothesis], [reference])[0][0]
 
-    def score_all(self, hypotheses: list[CLIPInput], references: list[CLIPInput]) -> list[list[float]]:
-        hyp_features = self.get_clip_features(hypotheses)
-        ref_features = self.get_clip_features(references)
+    def score_all(self, hypotheses: list[CLIPInput], references: list[CLIPInput],
+                  progress_bar=True) -> list[list[float]]:
+        hyp_features = self.get_clip_features(hypotheses, progress_bar)
+        ref_features = self.get_clip_features(references, progress_bar)
 
         similarities = []
         for hyp_feature in hyp_features:
