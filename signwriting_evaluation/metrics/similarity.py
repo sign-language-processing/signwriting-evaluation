@@ -117,8 +117,8 @@ class SignWritingSimilarityMetric(SignWritingMetric):
             reference_signs += [""] * (max_length - len(reference_signs))
 
         # Match each hypothesis sign with each reference sign
-        cost_matrix = self.score_all(hypothesis_signs, reference_signs)
-        row_ind, col_ind = linear_sum_assignment(cost_matrix)
+        cost_matrix = self.score_all(hypothesis_signs, reference_signs, progress_bar=False)
+        row_ind, col_ind = linear_sum_assignment(1 - np.array(cost_matrix))
         pairs = list(zip(row_ind, col_ind))
         values = [cost_matrix[row][col] for row, col in pairs]
         return sum(values) / len(values)

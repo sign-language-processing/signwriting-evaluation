@@ -44,6 +44,14 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         self.assertIsInstance(score, float)
         self.assertAlmostEqual(score, 0.8326259781509948 / 2)
 
+    def test_multi_sign_score_is_order_invariant(self):
+        sign_1 = "M530x538S17600508x462S15a11493x494S20e00488x510S22f03469x517"
+        sign_2 = "M530x538S17600508x462S12a11493x494S20e00488x510S22f13469x517"
+        hypothesis = f"{sign_1} {sign_2}"
+        reference = f"{sign_2} {sign_1}"
+        score = self.metric.score(hypothesis, reference)
+        self.assertAlmostEqual(score, 1)
+
     def test_bad_fsw_equals_0(self):
         bad_fsw = "M<s><s>M<s>p483"
         score = self.metric.corpus_score([bad_fsw], [[bad_fsw]])
