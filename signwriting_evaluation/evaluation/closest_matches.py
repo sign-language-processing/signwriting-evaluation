@@ -14,6 +14,13 @@ CURRENT_DIR = Path(__file__).parent
 ASSETS_DIR = CURRENT_DIR.parent.parent / "assets"
 
 
+# Set the font to Times Roman
+plt.rcParams['font.family'] = 'Times New Roman'
+plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
+# increase font size
+plt.rcParams.update({'font.size': 14})
+
+
 def load_signs(signs_file: Path):
     with open(signs_file, 'r', encoding='utf-8') as signs_f:
         signs = signs_f.read().splitlines()
@@ -78,6 +85,8 @@ def metrics_distribution(signs: list[str], metrics: list[SignWritingMetric]):
     plt.legend(loc="upper right")
     plt.tight_layout()
     plt.savefig(distribution_dir / "all.png")
+    plt.savefig(distribution_dir / "all.pdf")
+
     plt.close()
 
 

@@ -7,7 +7,6 @@ import torch
 from PIL import Image
 from signwriting.visualizer.visualize import signwriting_to_image
 from tqdm import tqdm
-from transformers import AutoModel, AutoProcessor
 
 from signwriting_evaluation.metrics.base import SignWritingMetric
 
@@ -51,9 +50,10 @@ class SignWritingCLIPScore(SignWritingMetric):
                  device=None):
         super().__init__(name="CLIPScore")
 
-        # Init CLIP model
-        self.model = AutoModel.from_pretrained(model_id)
+        # Init CLIP model pylint: disable=import-outside-toplevel
+        from transformers import AutoModel, AutoProcessor
         self.processor = AutoProcessor.from_pretrained(model_id)
+        self.model = AutoModel.from_pretrained(model_id)
 
         # Init cache
         if cache_directory is None:
