@@ -4,6 +4,7 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial import distance as dis
 from signwriting.formats.fsw_to_sign import fsw_to_sign
+from signwriting.formats.swu_to_fsw import swu2fsw
 from signwriting.tokenizer import normalize_signwriting
 from signwriting.types import Sign, SignSymbol
 
@@ -98,17 +99,22 @@ class SignWritingSimilarityMetric(SignWritingMetric):
         return length_weight + mean_cost * (1 - length_weight)
 
     def score_single_sign(self, hypothesis: str, reference: str) -> float:
+        print("scoring", hypothesis, reference)
         # Calculate the evaluate score for a given hypothesis and ref.
         hyp = fsw_to_sign(hypothesis)
         ref = fsw_to_sign(reference)
         return pow(1 - self.error_rate(hyp, ref), 2)
 
+    def _text_to_signs(self, text: str) -> list[str]:
+        text_as_fsw = swu2fsw(text) # converts swu symbols to fsw, while keeping the fsw symbols if present
+        return normalize_signwriting(text_as_fsw).split(" ")
+
     def score(self, hypothesis: str, reference: str) -> float:
         # Here, hypothesis and reference are both FSW strings of potentially different number of signs
-        hypothesis_signs = normalize_signwriting(hypothesis).split(" ")
-        reference_signs = normalize_signwriting(reference).split(" ")
+        hypothesis_signs = self._text_to_signs(hypothesis)
+        reference_signs = self._text_to_signs(reference)
         if len(hypothesis_signs) == 1 and len(reference_signs) == 1:
-            return self.score_single_sign(hypothesis, reference)
+            return self.score_single_sign(hypothesis_signs[0], reference_signs[0])
 
         # Pad with empty strings to make sure the number of signs is the same
         if len(hypothesis_signs) != len(reference_signs):

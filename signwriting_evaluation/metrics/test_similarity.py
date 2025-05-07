@@ -58,6 +58,13 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         self.assertIsInstance(score, float)
         self.assertAlmostEqual(score, 0)
 
+    def test_score_swu(self):
+        hypothesis = "𝠃𝤤𝤬񎱃𝤎𝣠񂇒𝣿𝤀񆕁𝣺𝤐񇆤𝣧𝤗"
+        reference = "𝠃𝤙𝤨񎵡𝤃𝣤񎲬𝤃𝣷񂈒𝣽𝤇񇆤𝣳𝤓"
+        score = self.metric.score(hypothesis, reference)
+        self.assertIsInstance(score, float)  # Check if the score is a float
+        self.assertAlmostEqual(score, 0.5509574768254414)
+
 
 if __name__ == '__main__':
     unittest.main()
