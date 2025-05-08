@@ -19,9 +19,15 @@ class SignWritingMetric:
 
     def validate_corpus_score_input(self, hypotheses: list[str], references: list[list[str]]):
         # This method is designed to avoid mistakes in the use of the corpus_score method
+        assert type(hypotheses) == list, "Hypotheses must be a list"
+        assert type(references) == list, "References must be a list"
+        if len(references) > 0:
+            reference_type = type(references[0])
+            assert reference_type == list, f"References must be a list of lists (found list of {reference_type})"
+
         for reference in references:
             assert len(hypotheses) == len(reference), \
-                "Hypothesis and reference must have the same number of instances"
+                f"Hypotheses ({len(hypotheses)}) and reference ({len(references)}) must have the same number of instances"
 
     def corpus_score(self, hypotheses: list[str], references: list[list[str]]) -> float:
         # Default implementation: average over sentence scores
