@@ -99,7 +99,6 @@ class SignWritingSimilarityMetric(SignWritingMetric):
         return length_weight + mean_cost * (1 - length_weight)
 
     def score_single_sign(self, hypothesis: str, reference: str) -> float:
-        print("scoring", hypothesis, reference)
         # Calculate the evaluate score for a given hypothesis and ref.
         hyp = fsw_to_sign(hypothesis)
         ref = fsw_to_sign(reference)

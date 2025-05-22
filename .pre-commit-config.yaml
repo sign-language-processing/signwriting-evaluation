@@ -1,6 +1,5 @@
 repos:
   - repo: local
-    files: ^signwriting/
     hooks:
       - id: pylint
         name: pylint
@@ -9,7 +8,8 @@ repos:
         types: [python]
       - id: pytest
         name: pytest
-        entry: pytest signwriting_evaluation
+        entry: pytest .
         language: system
         types: [python]
+        pass_filenames: false
 
