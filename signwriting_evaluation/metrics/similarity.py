@@ -60,6 +60,9 @@ class SignWritingSimilarityMetric(SignWritingMetric):
         hyp_class = self.get_shape_class_index(hyp_veq)
         ref_class = self.get_shape_class_index(ref_veq)
 
+        if hyp_class is None or ref_class is None:
+            return self.max_distance
+
         hyp_veq = self.weight_vector(hyp_veq)
         ref_veq = self.weight_vector(ref_veq)
         distance = (dis.euclidean(hyp_veq, ref_veq) +

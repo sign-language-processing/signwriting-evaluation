@@ -65,6 +65,15 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         self.assertIsInstance(score, float)  # Check if the score is a float
         self.assertAlmostEqual(score, 0.5509574768254414)
 
+    def test_unknown_symbol_class_returns_zero_score(self):
+        # Test that symbols with shapes outside defined class ranges are handled gracefully
+        # When a symbol's shape doesn't match any defined symbol class ranges, the metric
+        # should return maximum distance (resulting in zero similarity score) rather than crashing
+        hypothesis = "M530x538S38c00508x462"  # S38c00 has shape 0x38c, outside all defined ranges
+        reference = "M530x538S10000508x462"   # S10000 has shape 0x100, in hands_shapes range
+        score = self.metric.score(hypothesis, reference)
+        self.assertEqual(score, 0)
+
 
 if __name__ == '__main__':
     unittest.main()
