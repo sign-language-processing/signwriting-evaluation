@@ -17,8 +17,8 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
     def test_score_is_symemtric(self):
         reference = "M519x534S37900497x466S3770b497x485S15a51491x501S22f03481x513"
         hypothesis = "M530x538S37602508x462S15a11493x494S20e00488x510S22f03469x517"
-        score1 = self.metric.score(hypothesis, reference)
-        score2 = self.metric.score(reference, hypothesis)
+        score1 = self.metric.score(hypothesis=hypothesis, reference=reference)
+        score2 = self.metric.score(hypothesis=reference, reference=hypothesis)
         self.assertAlmostEqual(score1, score2, msg="The metric is not symmetric")
 
     def test_score_jumbled_sign(self):

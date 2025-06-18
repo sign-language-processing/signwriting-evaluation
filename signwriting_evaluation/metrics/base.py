@@ -59,15 +59,15 @@ class SignWritingMetric:
     def score_self(self, hypotheses: Sequence[str], progress_bar=True) -> list[list[float]]:
         if not self.SYMMETRIC:
             return self.score_all(hypotheses, hypotheses, progress_bar)
-        
+
         # For symmetric metrics, only compute upper triangle to avoid redundant calculations
         n = len(hypotheses)
         scores = np.eye(n, dtype=np.float16)  # Initialize with diagonal 1
-        
+
         total = n * (n - 1) // 2  # Exclude diagonal
         iterator = tqdm([(i, j) for i in range(n) for j in range(i + 1, n)],
                         total=total, disable=not progress_bar or total == 1)
-        
+
         for i, j in iterator:
             score = self.score(hypotheses[i], hypotheses[j])
             scores[i][j] = scores[j][i] = score

@@ -2,7 +2,7 @@ from sacrebleu.metrics import BLEU
 
 from signwriting.tokenizer import SignWritingTokenizer
 
-from signwriting_evaluation.metrics.base import SignWritingMetric
+from signwriting_evaluation.metrics.base import SignWritingMetric, validate_corpus_score_input
 
 
 class SignWritingBLEU(SignWritingMetric):
@@ -23,7 +23,7 @@ class SignWritingBLEU(SignWritingMetric):
         return self.bleu.sentence_score(hypothesis, [reference]).score / 100
 
     def corpus_score(self, hypotheses: list[str], references: list[list[str]]) -> float:
-        self.validate_corpus_score_input(hypotheses, references)
+        validate_corpus_score_input(hypotheses, references)
         hypotheses = [self.tokenize(h) for h in hypotheses]
         references = [[self.tokenize(r) for r in reference] for reference in references]
         return self.bleu.corpus_score(hypotheses, references).score / 100
