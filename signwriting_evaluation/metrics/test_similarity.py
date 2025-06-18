@@ -12,7 +12,14 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         reference = "M519x534S37900497x466S3770b497x485S15a51491x501S22f03481x513"
         score = self.metric.score(hypothesis, reference)
         self.assertIsInstance(score, float)  # Check if the score is a float
-        self.assertAlmostEqual(score, 0.5509574768254414)
+        self.assertAlmostEqual(score, 0.5557001288803375)
+
+    def test_score_is_symemtric(self):
+        reference = "M519x534S37900497x466S3770b497x485S15a51491x501S22f03481x513"
+        hypothesis = "M530x538S37602508x462S15a11493x494S20e00488x510S22f03469x517"
+        score1 = self.metric.score(hypothesis, reference)
+        score2 = self.metric.score(reference, hypothesis)
+        self.assertAlmostEqual(score1, score2, msg="The metric is not symmetric")
 
     def test_score_jumbled_sign(self):
         hypothesis = "M530x538S37602508x462S15a11493x494S20e00488x510S22f03469x517"
@@ -26,7 +33,7 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         reference = "M530x538S17600508x462S12a11493x494S20e00488x510S22f13469x517"
         score = self.metric.score(hypothesis, reference)
         self.assertIsInstance(score, float)
-        self.assertAlmostEqual(score, 0.8326259781509948)
+        self.assertAlmostEqual(score, 0.8210067817002714)
 
     def test_corpus_score(self):
         hypothesis = "M530x538S17600508x462S15a11493x494S20e00488x510S22f03469x517"
@@ -34,7 +41,7 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         bad_reference = "M530x538S17600508x462"
         score = self.metric.corpus_score([hypothesis], [[good_reference], [bad_reference]])
         self.assertIsInstance(score, float)
-        self.assertAlmostEqual(score, 0.8326259781509948)
+        self.assertAlmostEqual(score, 0.8210067817002714)
 
     def test_multi_sign_score(self):
         hypothesis_single = "M530x538S17600508x462S15a11493x494S20e00488x510S22f03469x517"
@@ -42,7 +49,7 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         reference = "M530x538S17600508x462S12a11493x494S20e00488x510S22f13469x517"
         score = self.metric.score(hypothesis, reference)
         self.assertIsInstance(score, float)
-        self.assertAlmostEqual(score, 0.8326259781509948 / 2)
+        self.assertAlmostEqual(score, 0.8210067817002714 / 2)
 
     def test_multi_sign_score_is_order_invariant(self):
         sign_1 = "M530x538S17600508x462S15a11493x494S20e00488x510S22f03469x517"
@@ -63,7 +70,7 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         reference = "𝠃𝤙𝤨񎵡𝤃𝣤񎲬𝤃𝣷񂈒𝣽𝤇񇆤𝣳𝤓"
         score = self.metric.score(hypothesis, reference)
         self.assertIsInstance(score, float)  # Check if the score is a float
-        self.assertAlmostEqual(score, 0.5509574768254414)
+        self.assertAlmostEqual(score, 0.5557001288803375)
 
     def test_unknown_symbol_class_returns_zero_score(self):
         # Test that symbols with shapes outside defined class ranges are handled gracefully
