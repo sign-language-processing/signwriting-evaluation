@@ -45,7 +45,7 @@ class SignWritingMetric:
         transpose_references = list(zip(*references))
         return sum(self.score_max(h, r) for h, r in zip(hypotheses, transpose_references)) / len(hypotheses)
 
-    def score_all(self, hypotheses: Sequence[str], references: Sequence[str], progress_bar=True) -> list[list[float]]:
+    def score_all(self, hypotheses: Sequence[str], references: Sequence[str], progress_bar=False) -> list[list[float]]:
         # Default implementation: call the score function for each hypothesis-reference pair
         total = len(hypotheses) * len(references)
         iterator = itertools.product(hypotheses, references)
