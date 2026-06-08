@@ -81,6 +81,31 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         score = self.metric.score(hypothesis, reference)
         self.assertEqual(score, 0)
 
+    def test_matches_legacy_scores(self):
+        base = "M530x538S37602508x462S15a11493x494S20e00488x510S22f03469x517"
+        reference = "M519x534S37900497x466S3770b497x485S15a51491x501S22f03481x513"
+        different_shape_hypothesis = "M530x538S17600508x462S15a11493x494S20e00488x510S22f03469x517"
+        different_shape_reference = "M530x538S17600508x462S12a11493x494S20e00488x510S22f13469x517"
+        cases = [
+            (base, reference, 0.5557001288803375),
+            (base, base, 1.0),
+            (base, "M530x538S22f03469x517S37602508x462S20e00488x510S15a11493x494", 1.0),
+            (different_shape_hypothesis, different_shape_reference, 0.8210067817002714),
+            (
+                f"{different_shape_hypothesis} {different_shape_hypothesis}",
+                different_shape_reference,
+                0.4105033908501357,
+            ),
+            (f"{different_shape_hypothesis} {different_shape_reference}",
+             f"{different_shape_reference} {different_shape_hypothesis}", 1.0),
+            ("M<s><s>M<s>p483", "M<s><s>M<s>p483", 0.0),
+            ("M530x538S38c00508x462", "M530x538S10000508x462", 0.0),
+            ("M530x538S38c00508x462", "M530x538S38c00508x462", 0.0),
+        ]
+        for hypothesis, reference, expected in cases:
+            with self.subTest(hypothesis=hypothesis, reference=reference):
+                self.assertAlmostEqual(self.metric.score(hypothesis, reference), expected, places=12)
+
 
 if __name__ == '__main__':
     unittest.main()
