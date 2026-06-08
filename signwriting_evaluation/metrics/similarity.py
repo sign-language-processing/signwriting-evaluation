@@ -19,7 +19,12 @@ class SymbolAttributes(NamedTuple):
     parallel: bool
 
 
-EnrichedSymbol = tuple[str, SymbolAttributes, Optional[int], int, int]
+class EnrichedSymbol(NamedTuple):
+    symbol: str
+    attributes: SymbolAttributes
+    shape_class: Optional[int]
+    x: int
+    y: int
 
 
 SYMBOL_CLASSES = {
@@ -96,7 +101,7 @@ class SignWritingSimilarityMetric(SignWritingMetric):
         x, y = symbol["position"]
         attributes = get_symbol_attributes(symbol_id)
         shape_class = get_shape_class_index(attributes.shape)
-        return symbol_id, attributes, shape_class, x, y
+        return EnrichedSymbol(symbol_id, attributes, shape_class, x, y)
 
     @staticmethod
     def enrich_sign(sign: Sign) -> list[EnrichedSymbol]:
@@ -115,24 +120,24 @@ class SignWritingSimilarityMetric(SignWritingMetric):
         return sign
 
     def calculate_distance(self, hyp, ref, fallback_distance=None) -> float:
-        hyp_symbol, hyp_attributes, hyp_class, hyp_x, hyp_y = self._coerce_symbol(hyp)
-        ref_symbol, ref_attributes, ref_class, ref_x, ref_y = self._coerce_symbol(ref)
+        hyp_symbol = self._coerce_symbol(hyp)
+        ref_symbol = self._coerce_symbol(ref)
 
-        if (hyp_symbol == ref_symbol and hyp_x == ref_x and hyp_y == ref_y and hyp_class is not None
-                and ref_class is not None):
+        if (hyp_symbol.symbol == ref_symbol.symbol and hyp_symbol.x == ref_symbol.x and hyp_symbol.y == ref_symbol.y
+                and hyp_symbol.shape_class is not None and ref_symbol.shape_class is not None):
             return 0.0
 
-        if hyp_class is None or ref_class is None:
+        if hyp_symbol.shape_class is None or ref_symbol.shape_class is None:
             return self.max_distance if fallback_distance is None else fallback_distance
 
-        symbols_distance = fast_symbol_distance(hyp_attributes, ref_attributes)
+        symbols_distance = fast_symbol_distance(hyp_symbol.attributes, ref_symbol.attributes)
 
-        dx = hyp_x - ref_x
-        dy = hyp_y - ref_y
+        dx = hyp_symbol.x - ref_symbol.x
+        dy = hyp_symbol.y - ref_symbol.y
         position_euclidean = math.sqrt(dx * dx + dy * dy)
         position_distance = ERROR_WEIGHT["positional"] * position_euclidean
 
-        class_penalty = abs(hyp_class - ref_class) * ERROR_WEIGHT["class_penalty"]
+        class_penalty = abs(hyp_symbol.shape_class - ref_symbol.shape_class) * ERROR_WEIGHT["class_penalty"]
 
         return symbols_distance + position_distance + class_penalty
 
@@ -150,27 +155,30 @@ class SignWritingSimilarityMetric(SignWritingMetric):
         ref_len = len(ref_symbols)
         return abs(hyp_len - ref_len) / (max(hyp_len, ref_len) + 1)
 
-    def error_rate(self, hyp, ref) -> float:
-        hyp_symbols = self._coerce_sign(hyp)
-        ref_symbols = self._coerce_sign(ref)
+    def mean_symbol_cost(self, hyp_symbols, ref_symbols) -> float:
         hyp_len = len(hyp_symbols)
         ref_len = len(ref_symbols)
 
-        if not hyp_len or not ref_len:
+        if hyp_len == 1 and ref_len == 1:
+            return self.symbols_score(hyp_symbols[0], ref_symbols[0])
+
+        cost_matrix = np.empty((hyp_len, ref_len), dtype=np.float64)
+        for i, hyp_symbol in enumerate(hyp_symbols):
+            row = cost_matrix[i]
+            for j, ref_symbol in enumerate(ref_symbols):
+                row[j] = self.symbols_score(hyp_symbol, ref_symbol)
+
+        row_ind, col_ind = linear_sum_assignment(cost_matrix)
+        return float(cost_matrix[row_ind, col_ind].mean())
+
+    def error_rate(self, hyp, ref) -> float:
+        hyp_symbols = self._coerce_sign(hyp)
+        ref_symbols = self._coerce_sign(ref)
+
+        if not hyp_symbols or not ref_symbols:
             return 1.0
 
-        if hyp_len == 1 and ref_len == 1:
-            mean_cost = self.symbols_score(hyp_symbols[0], ref_symbols[0])
-        else:
-            cost_matrix = np.empty((hyp_len, ref_len), dtype=np.float64)
-            for i, hyp_symbol in enumerate(hyp_symbols):
-                row = cost_matrix[i]
-                for j, ref_symbol in enumerate(ref_symbols):
-                    row[j] = self.symbols_score(hyp_symbol, ref_symbol)
-
-            row_ind, col_ind = linear_sum_assignment(cost_matrix)
-            mean_cost = float(cost_matrix[row_ind, col_ind].mean())
-
+        mean_cost = self.mean_symbol_cost(hyp_symbols, ref_symbols)
         length_error = self.length_acc(hyp_symbols, ref_symbols)
         length_weight = length_error ** ERROR_WEIGHT["exp_factor"]
         return length_weight + mean_cost * (1.0 - length_weight)
@@ -179,7 +187,7 @@ class SignWritingSimilarityMetric(SignWritingMetric):
         hyp_symbols = self.enrich_sign(fsw_to_sign(hypothesis))
         ref_symbols = self.enrich_sign(fsw_to_sign(reference))
 
-        if hypothesis == reference and hyp_symbols and all(symbol[2] is not None for symbol in hyp_symbols):
+        if hypothesis == reference and hyp_symbols and all(symbol.shape_class is not None for symbol in hyp_symbols):
             return 1.0
 
         score = 1.0 - self.error_rate(hyp_symbols, ref_symbols)
@@ -194,17 +202,21 @@ class SignWritingSimilarityMetric(SignWritingMetric):
         if len(hypothesis_signs) == 1 and len(reference_signs) == 1:
             return self.score_single_sign(hypothesis_signs[0], reference_signs[0])
 
-        hyp_enriched = [self.enrich_sign(fsw_to_sign(sign)) for sign in hypothesis_signs]
-        ref_enriched = [self.enrich_sign(fsw_to_sign(sign)) for sign in reference_signs]
-        matrix_size = max(len(hyp_enriched), len(ref_enriched))
+        return self.mean_sign_score(
+            [self.enrich_sign(fsw_to_sign(sign)) for sign in hypothesis_signs],
+            [self.enrich_sign(fsw_to_sign(sign)) for sign in reference_signs],
+        )
+
+    def mean_sign_score(self, hyp_signs, ref_signs) -> float:
+        matrix_size = max(len(hyp_signs), len(ref_signs))
 
         if matrix_size == 0:
             return 0.0
 
         cost_matrix = np.zeros((matrix_size, matrix_size), dtype=np.float64)
-        for i, hyp_sign in enumerate(hyp_enriched):
+        for i, hyp_sign in enumerate(hyp_signs):
             row = cost_matrix[i]
-            for j, ref_sign in enumerate(ref_enriched):
+            for j, ref_sign in enumerate(ref_signs):
                 score = 1.0 - self.error_rate(hyp_sign, ref_sign)
                 row[j] = score * score
 
