@@ -12,7 +12,7 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         reference = "M519x534S37900497x466S3770b497x485S15a51491x501S22f03481x513"
         score = self.metric.score(hypothesis, reference)
         self.assertIsInstance(score, float)  # Check if the score is a float
-        self.assertAlmostEqual(score, 0.5557001288803375)
+        self.assertAlmostEqual(score, 0.5555982772844742)
 
     def test_score_is_symemtric(self):
         reference = "M519x534S37900497x466S3770b497x485S15a51491x501S22f03481x513"
@@ -65,12 +65,27 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         self.assertIsInstance(score, float)
         self.assertAlmostEqual(score, 0)
 
+    def test_score_is_translation_invariant(self):
+        # Same sign shifted in y; only absolute coordinates differ.
+        hypothesis = "M518x553S10000500x523S2ff00482x483"
+        reference = "M518x532S10000500x502S2ff00482x462"
+        score = self.metric.score(hypothesis, reference)
+        self.assertAlmostEqual(score, 1)
+
+    def test_score_extra_symbol_keeps_hands_aligned(self):
+        # Identical hands; reference adds a neutral face. Hands must still align,
+        # leaving only the length penalty for the extra symbol.
+        hypothesis = "M540x515S10000525x485S10008460x485"
+        reference = "M540x542S10000525x512S10008460x512S2ff00482x483"
+        score = self.metric.score(hypothesis, reference)
+        self.assertAlmostEqual(score, 0.765625)
+
     def test_score_swu(self):
         hypothesis = "𝠃𝤤𝤬񎱃𝤎𝣠񂇒𝣿𝤀񆕁𝣺𝤐񇆤𝣧𝤗"
         reference = "𝠃𝤙𝤨񎵡𝤃𝣤񎲬𝤃𝣷񂈒𝣽𝤇񇆤𝣳𝤓"
         score = self.metric.score(hypothesis, reference)
         self.assertIsInstance(score, float)  # Check if the score is a float
-        self.assertAlmostEqual(score, 0.5557001288803375)
+        self.assertAlmostEqual(score, 0.5555982772844742)
 
     def test_unknown_symbol_class_returns_zero_score(self):
         # Test that symbols with shapes outside defined class ranges are handled gracefully

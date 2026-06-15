@@ -85,6 +85,17 @@ def fast_symbol_distance(attributes1: SymbolAttributes, attributes2: SymbolAttri
 fsw_to_sign = cache(fsw_to_sign)
 
 
+def centroid(symbols: Tuple[SignSymbol, ...]) -> Tuple[float, float]:
+    count = len(symbols)
+    return (sum(s["position"][0] for s in symbols) / count,
+            sum(s["position"][1] for s in symbols) / count)
+
+
+def translate(symbol: SignSymbol, offset: Tuple[float, float]) -> SignSymbol:
+    return {"symbol": symbol["symbol"],
+            "position": (symbol["position"][0] - offset[0], symbol["position"][1] - offset[1])}
+
+
 class SignWritingSimilarityMetric(SignWritingMetric):
     SYMMETRIC = True
 
@@ -127,19 +138,26 @@ class SignWritingSimilarityMetric(SignWritingMetric):
         return abs(hyp_len - ref_len) / (max(hyp_len, ref_len) + 1)
 
     def error_rate(self, hyp: Sign, ref: Sign) -> float:
-        # Calculate the evaluate score for a given hypothesis and ref.
-        if not hyp["symbols"] or not ref["symbols"]:
+        hyp_symbols, ref_symbols = hyp["symbols"], ref["symbols"]
+        if not hyp_symbols or not ref_symbols:
             return 1.0
 
+        # Match on centroid-centered positions so an unmatched symbol (e.g. an added
+        # face) can't bias the matching by dragging the centroid off the shared layout.
+        hyp_centroid, ref_centroid = centroid(hyp_symbols), centroid(ref_symbols)
         cost_matrix = np.array(
-            [self.symbols_score(first, second) for first in hyp["symbols"] for second in ref["symbols"]])
-        cost_matrix = cost_matrix.reshape(len(hyp["symbols"]), -1)
-        # Find the lowest cost matching
-        row_ind, col_ind = linear_sum_assignment(cost_matrix)
-        mean_cost = float(cost_matrix[row_ind, col_ind].mean())
+            [self.symbols_score(translate(first, hyp_centroid), translate(second, ref_centroid))
+             for first in hyp_symbols for second in ref_symbols])
+        row_ind, col_ind = linear_sum_assignment(cost_matrix.reshape(len(hyp_symbols), -1))
 
-        length_error = self.length_acc(hyp, ref)
-        length_weight = pow(length_error, ERROR_WEIGHT["exp_factor"])
+        # Re-align on the matched pairs alone, then score them, so signs that differ
+        # only by a translation match perfectly regardless of absolute coordinates.
+        offset = tuple(np.array([hyp_symbols[i]["position"] for i in row_ind], dtype=float).mean(axis=0)
+                       - np.array([ref_symbols[j]["position"] for j in col_ind], dtype=float).mean(axis=0))
+        mean_cost = float(np.mean([self.symbols_score(translate(hyp_symbols[i], offset), ref_symbols[j])
+                                   for i, j in zip(row_ind, col_ind)]))
+
+        length_weight = pow(self.length_acc(hyp, ref), ERROR_WEIGHT["exp_factor"])
         return length_weight + mean_cost * (1 - length_weight)
 
     def score_single_sign(self, hypothesis: str, reference: str) -> float:
