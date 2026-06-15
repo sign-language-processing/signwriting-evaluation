@@ -2,6 +2,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image
 
 from signwriting.visualizer.visualize import signwriting_to_image
 from signwriting_evaluation.metrics.base import SignWritingMetric
@@ -21,6 +22,14 @@ plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 plt.rcParams.update({'font.size': 14})
 
 
+def save_sign_image(fsw: str, path: Path):
+    # signwriting_to_image returns a transparent RGBA canvas; flatten onto white before saving.
+    image = signwriting_to_image(fsw)
+    background = Image.new("RGBA", image.size, (255, 255, 255, 255))
+    background.alpha_composite(image)
+    background.convert("RGB").save(path)
+
+
 def load_signs(signs_file: Path):
     with open(signs_file, 'r', encoding='utf-8') as signs_f:
         signs = signs_f.read().splitlines()
@@ -38,7 +47,7 @@ def find_closest_signs(signs: list[str], all_signs: list[str], metrics: list[Sig
         for specific_sign, scores in zip(signs, all_scores):
             sign_dir = matches_dir / specific_sign
             sign_dir.mkdir(parents=True, exist_ok=True)
-            signwriting_to_image(specific_sign).save(sign_dir / "ref.png")
+            save_sign_image(specific_sign, sign_dir / "ref.png")
 
             metric_dir = sign_dir / metric.name
             metric_dir.mkdir(parents=True, exist_ok=True)
@@ -47,7 +56,7 @@ def find_closest_signs(signs: list[str], all_signs: list[str], metrics: list[Sig
             print("Closest signs:")
             for i, (sign, score) in enumerate(closest_signs):
                 print(f"{score}: {sign}")
-                signwriting_to_image(sign).save(metric_dir / f"{i}.png")
+                save_sign_image(sign, metric_dir / f"{i}.png")
 
 
 def metrics_distribution(signs: list[str], metrics: list[SignWritingMetric]):

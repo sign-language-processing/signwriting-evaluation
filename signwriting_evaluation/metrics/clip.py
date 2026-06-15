@@ -94,6 +94,9 @@ class SignWritingCLIPScore(SignWritingMetric):
         pixels = self.processor(images=images, return_tensors="pt")["pixel_values"].to(self.model.device)
         with torch.no_grad():
             img_features = self.model.get_image_features(pixels)
+        # transformers >=5 returns a BaseModelOutputWithPooling; older versions returned the tensor directly.
+        if not isinstance(img_features, torch.Tensor):
+            img_features = img_features.pooler_output
         img_features_normalized = img_features / img_features.norm(p=2, dim=-1, keepdim=True)
         for i, item in enumerate(batch):
             cache_name = self.cache_name(item)
