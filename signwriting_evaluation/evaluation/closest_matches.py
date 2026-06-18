@@ -8,8 +8,8 @@ from signwriting.visualizer.visualize import signwriting_to_image
 from signwriting_evaluation.metrics.base import SignWritingMetric
 from signwriting_evaluation.metrics.bleu import SignWritingBLEU
 from signwriting_evaluation.metrics.chrf import SignWritingCHRF
-from signwriting_evaluation.metrics.clip import SignWritingCLIPScore
 from signwriting_evaluation.metrics.similarity import SignWritingSimilarityMetric
+from signwriting_evaluation.metrics.similarity_v2 import SignWritingSimilarityV2Metric
 
 CURRENT_DIR = Path(__file__).parent
 ASSETS_DIR = CURRENT_DIR.parent.parent / "assets"
@@ -24,7 +24,7 @@ plt.rcParams.update({'font.size': 14})
 
 def save_sign_image(fsw: str, path: Path):
     # signwriting_to_image returns a transparent RGBA canvas; flatten onto white before saving.
-    image = signwriting_to_image(fsw)
+    image = signwriting_to_image(fsw, trust_box=False)
     background = Image.new("RGBA", image.size, (255, 255, 255, 255))
     background.alpha_composite(image)
     background.convert("RGB").save(path)
@@ -100,17 +100,19 @@ def metrics_distribution(signs: list[str], metrics: list[SignWritingMetric]):
 
 
 if __name__ == "__main__":
+    import shutil
+
     single_signs = load_signs(ASSETS_DIR / "single_signs.txt")
     hello_signs = load_signs(ASSETS_DIR / "hello_signs.txt")
     print(f"Found {len(single_signs)} signs")
 
+    # CLIPScore is omitted here: encoding ~230k SignWriting images per query is prohibitively slow.
     all_metrics = [
-        SignWritingCLIPScore(),
-        SignWritingSimilarityMetric(),
+        SignWritingSimilarityV2Metric(rust=True),  # rust backend -> batched, multi-core score_all
         SignWritingBLEU(),
         SignWritingCHRF(),
+        SignWritingSimilarityMetric(),  # v1
     ]
 
-    metrics_distribution(single_signs, all_metrics)
-
+    shutil.rmtree(ASSETS_DIR / "matches", ignore_errors=True)  # clear stale metric dirs (incl. old CLIPScore)
     find_closest_signs(hello_signs, single_signs, all_metrics)
