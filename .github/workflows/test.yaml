@@ -21,7 +21,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Install Requirements
-        run: pip install .[dev]  # maturin build backend compiles the Rust kernel into the package
+        # editable so maturin places the compiled kernel in the source tree (which shadows site-packages
+        # when pytest runs from the repo root); a plain install would hide the .so behind the source dir
+        run: pip install -e .[dev]
 
       - name: Test Code
         run: pytest signwriting_evaluation
