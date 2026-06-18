@@ -353,7 +353,10 @@ class SignWritingSimilarityV2Metric(SignWritingMetric):
         if rust:
             try:
                 import signwriting_similarity_rs as _rs  # noqa: PLC0415
-                self._rs = _rs
+                # The crate directory is importable as an empty namespace package when the compiled
+                # extension has not been built (e.g. running from the repo without `maturin develop`);
+                # only use it if the kernel functions are actually present.
+                self._rs = _rs if hasattr(_rs, "score_single") else None
             except ImportError:
                 self._rs = None
         # Two opt-out factors (set weight to 0 to disable), each multiplied into the per-sign score:

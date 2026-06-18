@@ -15,7 +15,8 @@ dependencies = [
 # Per-metric extras: install only what you use, e.g. `pip install signwriting-evaluation[similarity]`.
 bleu = ["sacrebleu"]
 chrf = ["sacrebleu"]
-similarity = ["numpy", "scipy"]            # the SymbolsDistances metrics (v1 and v2)
+# the SymbolsDistances metrics (v1 and v2); the Rust kernel accelerates v2 (falls back to Python if absent)
+similarity = ["numpy", "scipy", "signwriting-similarity-rs>=0.1.0"]
 clip = ["torch", "transformers", "diskcache"]
 all = ["signwriting-evaluation[bleu,chrf,similarity,clip]"]
 dev = [

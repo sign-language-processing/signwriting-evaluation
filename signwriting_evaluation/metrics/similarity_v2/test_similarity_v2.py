@@ -24,9 +24,11 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         # The Rust kernel approximates the two rendering-derived factors (pixel-touch, color-change
         # overlap) with bounding-box tests, so it matches the Python path closely but not exactly.
         try:
-            import signwriting_similarity_rs  # noqa: F401
+            import signwriting_similarity_rs
         except ImportError:
             self.skipTest("signwriting_similarity_rs not built")
+        if not hasattr(signwriting_similarity_rs, "score_single"):
+            self.skipTest("signwriting_similarity_rs not built")  # importable as empty namespace package
         rust = SignWritingSimilarityV2Metric(rust=True)
         pairs = [("M530x538S37602508x462S15a11493x494S20e00488x510S22f03469x517",
                   "M519x534S37900497x466S3770b497x485S15a51491x501S22f03481x513"),
