@@ -18,8 +18,9 @@ jobs:
         platform:
           - { runner: ubuntu-latest,  target: x86_64 }
           - { runner: ubuntu-latest,  target: aarch64 }
-          - { runner: macos-13,       target: x86_64 }
-          - { runner: macos-latest,   target: aarch64 }
+          # one universal2 wheel (arm64 + x86_64) on the plentiful arm64 runner — avoids the scarce
+          # macos-13 (Intel) runners that otherwise stall the matrix
+          - { runner: macos-latest,   target: universal2-apple-darwin }
           - { runner: windows-latest, target: x64 }
     steps:
       - uses: actions/checkout@v5
