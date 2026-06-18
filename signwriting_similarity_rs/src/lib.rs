@@ -415,7 +415,7 @@ fn score_single_many(py: Python, pairs: Vec<(String, String)>) -> Vec<f64> {
 }
 
 #[pymodule]
-fn signwriting_similarity_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _similarity_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(score_single, m)?)?;
     m.add_function(wrap_pyfunction!(score_single_many, m)?)?;
     Ok(())

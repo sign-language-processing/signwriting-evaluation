@@ -1,3 +1,7 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
 [project]
 name = "signwriting-evaluation"
 description = "Automatic Evaluation for SignWriting Machine Learning Outputs"
@@ -15,8 +19,7 @@ dependencies = [
 # Per-metric extras: install only what you use, e.g. `pip install signwriting-evaluation[similarity]`.
 bleu = ["sacrebleu"]
 chrf = ["sacrebleu"]
-# the SymbolsDistances metrics (v1 and v2); the Rust kernel accelerates v2 (falls back to Python if absent)
-similarity = ["numpy", "scipy", "signwriting-similarity-rs>=0.1.0"]
+similarity = ["numpy", "scipy"]            # the SymbolsDistances metrics (v1 and v2)
 clip = ["torch", "transformers", "diskcache"]
 all = ["signwriting-evaluation[bleu,chrf,similarity,clip]"]
 dev = [
@@ -41,19 +44,17 @@ line-length = 120
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]  # pycodestyle errors/warnings, pyflakes, import sorting
 
-[tool.setuptools]
-packages = [
-    "signwriting_evaluation",
-    "signwriting_evaluation.metrics",
-    "signwriting_evaluation.metrics.bleu",
-    "signwriting_evaluation.metrics.chrf",
-    "signwriting_evaluation.metrics.clip",
-    "signwriting_evaluation.metrics.similarity",
-    "signwriting_evaluation.metrics.similarity_v2",
+[tool.maturin]
+# Mixed Python + Rust package: the pure-Python package lives at the repo root, and the PyO3 kernel
+# (signwriting_similarity_rs crate) is compiled into signwriting_evaluation._similarity_rs and shipped
+# inside the wheel — so `pip install signwriting-evaluation` includes the fast kernel.
+python-source = "."
+manifest-path = "signwriting_similarity_rs/Cargo.toml"
+module-name = "signwriting_evaluation._similarity_rs"
+include = [
+    "signwriting_evaluation/metrics/similarity_v2/base_symbol_names.json",
+    "signwriting_evaluation/metrics/similarity_v2/similarity_v2.md",
 ]
-
-[tool.setuptools.package-data]
-"signwriting_evaluation.metrics.similarity_v2" = ["base_symbol_names.json", "similarity_v2.md"]
 
 [tool.pytest.ini_options]
 addopts = "-v"

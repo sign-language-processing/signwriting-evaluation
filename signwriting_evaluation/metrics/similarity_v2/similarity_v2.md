@@ -789,16 +789,18 @@ a legitimate 45° target because it is a true similarity spanning `[0, 1]`; conf
 
 v2 is ~10× slower than v1 in Python (name distance, canonicalizations, factors, implicit handling, and
 the mirror check, which alone doubles the work). To make large-scale scoring cheap, the per-pair
-**core is ported to Rust** (`signwriting_similarity_rs`, a PyO3/maturin extension); the metric routes
-through it when constructed with `rust=True` (falling back to Python if the extension is not built).
+**core is ported to Rust** (the `signwriting_similarity_rs` crate, compiled by maturin into
+`signwriting_evaluation._similarity_rs` and shipped inside the wheel); the metric routes through it when
+constructed with `rust=True` (falling back to Python if the extension is somehow absent).
 
 **What is in Rust:** FSW parse, symbol attributes + all canonicalizations (wall/floor, heel/top, size,
-plane), the name identity distance, the symbol distance and normalization, the Hungarian assignment,
-the length/implicit penalty, and all three factors (reordering, overlap, direction). Data tables
-(names, canon maps, weights, and `get_symbol_size`) are exported from Python into the crate and
-embedded. **What stays in Python:** the mirror wrapper (`mirror_fsw` is cached and exact, so we pass
-the mirrored reference to Rust) and multi-sign *sequence* assembly (rare; calls the Rust single-sign
-kernel per sign-pair).
+plane), the name identity distance (with the head/face `facial_scale`), the separated identity/position
+cost, the conditional materialized implicit face, the Hungarian assignment, the length penalty, and the
+reordering and direction factors. Data tables (names, canon maps, weights, and `get_symbol_size`) are
+exported from Python into the crate and embedded. **What is approximated in Rust:** the two
+*rendering-derived* factors — pixel-accurate touch and the color-change overlap-order weighting — cannot
+render glyphs in Rust, so the kernel uses fast bounding-box tests for them. **What stays in Python:**
+the mirror wrapper (`mirror_fsw`, cached and exact) and multi-sign *sequence* assembly.
 
 **Speed (Apple M-class, 12 cores):**
 
@@ -815,8 +817,8 @@ Rust call with the GIL released**. The optimized single-sign kernel is ~24× ove
 its own (precomputed pairwise name-distance table, per-symbol cached class/name index, `FxHashMap`
 lookups, flat matrices); rayon adds the rest.
 
-**Parity.** Exact (`< 1e-9`) except for ~0.1 % of pairs whose optimal symbol matching is **non-unique**
-(repeated/symmetric symbols): there SciPy's `linear_sum_assignment` and the Rust Hungarian pick
-different equal-cost matchings, so the factors — which depend on the specific pairing — can differ
-slightly (≤ ~0.05). This does not move the aggregate signals (AUC/FS/preference/label-rank identical;
-mouthing Spearman within 0.001). Building: `cd signwriting_similarity_rs && maturin develop --release`.
+**Parity.** Close but not exact: the two rendering-derived factors use bounding-box approximations in
+Rust (above), so per-pair scores match Python within ~0.02. Callers needing exact scores re-score the
+shortlisted top candidates through Python (e.g. the calibration tools score the corpus with Rust, then
+re-rank the top ~40 with the Python metric). Aggregate signals are unaffected. The package is built by
+maturin (`pip install .` compiles the kernel; `maturin develop --release` for an editable dev build).

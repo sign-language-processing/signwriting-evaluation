@@ -1,12 +1,63 @@
 name: Publish Python Package
 
+# signwriting-evaluation is a mixed Python + Rust (PyO3) package built by maturin, so the release builds
+# platform wheels (abi3, one per platform for Python 3.9+) with the Rust kernel compiled in, plus an
+# sdist, and publishes them to PyPI on release.
+
 on:
   release:
     types: [ created ]
 
 jobs:
-  pypi-publish:
+  wheels:
+    name: wheels ${{ matrix.platform.target }} on ${{ matrix.platform.runner }}
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { runner: ubuntu-latest,  target: x86_64 }
+          - { runner: ubuntu-latest,  target: aarch64 }
+          - { runner: macos-13,       target: x86_64 }
+          - { runner: macos-latest,   target: aarch64 }
+          - { runner: windows-latest, target: x64 }
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set version from the release tag
+        shell: bash
+        run: |
+          version="${GITHUB_REF#refs/tags/}"; version="${version#v}"
+          sed -i.bak "s/^version = .*/version = \"${version}\"/" pyproject.toml && rm -f pyproject.toml.bak
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.platform.target }}
+          args: --release --out dist
+          manylinux: auto
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.platform.runner }}-${{ matrix.platform.target }}
+          path: dist
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set version from the release tag
+        run: |
+          version="${GITHUB_REF#refs/tags/}"; version="${version#v}"
+          sed -i "s/^version = .*/version = \"${version}\"/" pyproject.toml
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-sdist
+          path: dist
+
+  publish:
     name: Upload release to PyPI
+    needs: [ wheels, sdist ]
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -14,27 +65,10 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-python@v6
+      - uses: actions/download-artifact@v4
         with:
-          python-version: "3.12"
-
-      - name: Extract release version
-        id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-
-      - name: Update version in pyproject.toml
-        run: |
-          sed -i 's/^version = .*/version = "${{ env.version }}"/' pyproject.toml
-
-      - name: Install build dependencies
-        run: pip install build
-
-      - name: Build a binary wheel dist
-        run: |
-          rm -rf dist
-          python -m build
-
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist
       - name: Publish distribution 📦 to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

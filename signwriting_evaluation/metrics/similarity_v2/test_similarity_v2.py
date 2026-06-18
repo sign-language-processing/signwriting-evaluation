@@ -23,13 +23,9 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
     def test_rust_backend_parity(self):
         # The Rust kernel approximates the two rendering-derived factors (pixel-touch, color-change
         # overlap) with bounding-box tests, so it matches the Python path closely but not exactly.
-        try:
-            import signwriting_similarity_rs
-        except ImportError:
-            self.skipTest("signwriting_similarity_rs not built")
-        if not hasattr(signwriting_similarity_rs, "score_single"):
-            self.skipTest("signwriting_similarity_rs not built")  # importable as empty namespace package
+        # The kernel must be built before running the tests (maturin build backend); we never skip it.
         rust = SignWritingSimilarityV2Metric(rust=True)
+        self.assertIsNotNone(rust._rs, "native _similarity_rs kernel not built — build it before testing")
         pairs = [("M530x538S37602508x462S15a11493x494S20e00488x510S22f03469x517",
                   "M519x534S37900497x466S3770b497x485S15a51491x501S22f03481x513"),
                  ("M530x538S17600508x462S15a11493x494S20e00488x510S22f03469x517",

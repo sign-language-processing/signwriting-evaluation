@@ -20,11 +20,8 @@ jobs:
           python-version: '3.10'
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Build & install the Rust kernel
-        run: pip install ./signwriting_similarity_rs
-
       - name: Install Requirements
-        run: pip install .[dev]
+        run: pip install .[dev]  # maturin build backend compiles the Rust kernel into the package
 
       - name: Test Code
         run: pytest signwriting_evaluation
