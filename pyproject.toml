@@ -52,6 +52,7 @@ python-source = "."
 manifest-path = "signwriting_similarity_rs/Cargo.toml"
 module-name = "signwriting_evaluation._similarity_rs"
 include = [
+    "LICENSE",  # maturin records License-File: LICENSE in the metadata, so it must be in the sdist too
     "signwriting_evaluation/metrics/similarity_v2/base_symbol_names.json",
     "signwriting_evaluation/metrics/similarity_v2/similarity_v2.md",
 ]
