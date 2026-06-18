@@ -1,5 +1,12 @@
-# pylint: disable=line-too-long, duplicate-code
 from pathlib import Path
+
+METRIC_ORDER = ["SymbolsDistancesV2", "SymbolsDistances", "TokenizedBLEU", "CHRF", "CLIPScore"]
+
+
+def ordered_metric_dirs(sign_dir):
+    dirs = [d for d in sign_dir.iterdir() if d.is_dir()]
+    return sorted(dirs, key=lambda d: METRIC_ORDER.index(d.name) if d.name in METRIC_ORDER else len(METRIC_ORDER))
+
 
 if __name__ == "__main__":
     matches_dir = Path(__file__).parent.parent.parent / "assets" / "matches"
@@ -14,7 +21,7 @@ if __name__ == "__main__":
     for sign_dir in matches_dir.iterdir():
         # pylint: disable=invalid-name
         colspan = 0
-        for metric_dir in sign_dir.iterdir():
+        for metric_dir in ordered_metric_dirs(sign_dir):
             if metric_dir.is_dir():
                 colspan += 1
                 metrics_header.append(f"\\texttt{{{metric_dir.name}}}")
@@ -39,6 +46,6 @@ if __name__ == "__main__":
         print(f"        {' & '.join(row)} \\\\")
     print("        \\bottomrule")
     print("    \\end{tabular}")
-    print("    \\caption{Top 10 nearest neighbors for selected signs using different evaluation metrics. The reference signs are shown at the top, and the retrieved signs are displayed in order of decreasing similarity score from left to right.}")
+    print("    \\caption{Top 10 nearest neighbors for selected signs using different evaluation metrics. The reference signs are shown at the top, and the retrieved signs are displayed in order of decreasing similarity score from left to right.}")  # noqa: E501
     print("    \\label{tab:nearest_neighbors}")
     print("\\end{table*}")

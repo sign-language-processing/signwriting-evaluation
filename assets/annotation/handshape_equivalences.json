@@ -1,0 +1,37 @@
+{
+  "description": "Stylistically equivalent {fill}{rotation} handshape variants",
+  "pairs": [
+    [
+      "02",
+      "42"
+    ],
+    [
+      "12",
+      "52"
+    ],
+    [
+      "0a",
+      "4a"
+    ],
+    [
+      "16",
+      "36"
+    ],
+    [
+      "1a",
+      "5a"
+    ],
+    [
+      "1e",
+      "3e"
+    ],
+    [
+      "2e",
+      "4e"
+    ],
+    [
+      "26",
+      "46"
+    ]
+  ]
+}

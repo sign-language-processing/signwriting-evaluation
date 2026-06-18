@@ -2,13 +2,14 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-
+from PIL import Image
 from signwriting.visualizer.visualize import signwriting_to_image
+
 from signwriting_evaluation.metrics.base import SignWritingMetric
 from signwriting_evaluation.metrics.bleu import SignWritingBLEU
 from signwriting_evaluation.metrics.chrf import SignWritingCHRF
-from signwriting_evaluation.metrics.clip import SignWritingCLIPScore
 from signwriting_evaluation.metrics.similarity import SignWritingSimilarityMetric
+from signwriting_evaluation.metrics.similarity_v2 import SignWritingSimilarityV2Metric
 
 CURRENT_DIR = Path(__file__).parent
 ASSETS_DIR = CURRENT_DIR.parent.parent / "assets"
@@ -19,6 +20,14 @@ plt.rcParams['font.family'] = 'Times New Roman'
 plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 # increase font size
 plt.rcParams.update({'font.size': 14})
+
+
+def save_sign_image(fsw: str, path: Path):
+    # signwriting_to_image returns a transparent RGBA canvas; flatten onto white before saving.
+    image = signwriting_to_image(fsw, trust_box=False)
+    background = Image.new("RGBA", image.size, (255, 255, 255, 255))
+    background.alpha_composite(image)
+    background.convert("RGB").save(path)
 
 
 def load_signs(signs_file: Path):
@@ -38,7 +47,7 @@ def find_closest_signs(signs: list[str], all_signs: list[str], metrics: list[Sig
         for specific_sign, scores in zip(signs, all_scores):
             sign_dir = matches_dir / specific_sign
             sign_dir.mkdir(parents=True, exist_ok=True)
-            signwriting_to_image(specific_sign).save(sign_dir / "ref.png")
+            save_sign_image(specific_sign, sign_dir / "ref.png")
 
             metric_dir = sign_dir / metric.name
             metric_dir.mkdir(parents=True, exist_ok=True)
@@ -47,7 +56,7 @@ def find_closest_signs(signs: list[str], all_signs: list[str], metrics: list[Sig
             print("Closest signs:")
             for i, (sign, score) in enumerate(closest_signs):
                 print(f"{score}: {sign}")
-                signwriting_to_image(sign).save(metric_dir / f"{i}.png")
+                save_sign_image(sign, metric_dir / f"{i}.png")
 
 
 def metrics_distribution(signs: list[str], metrics: list[SignWritingMetric]):
@@ -91,17 +100,19 @@ def metrics_distribution(signs: list[str], metrics: list[SignWritingMetric]):
 
 
 if __name__ == "__main__":
+    import shutil
+
     single_signs = load_signs(ASSETS_DIR / "single_signs.txt")
     hello_signs = load_signs(ASSETS_DIR / "hello_signs.txt")
     print(f"Found {len(single_signs)} signs")
 
+    # CLIPScore is omitted here: encoding ~230k SignWriting images per query is prohibitively slow.
     all_metrics = [
-        SignWritingCLIPScore(),
-        SignWritingSimilarityMetric(),
+        SignWritingSimilarityV2Metric(rust=True),  # rust backend -> batched, multi-core score_all
         SignWritingBLEU(),
         SignWritingCHRF(),
+        SignWritingSimilarityMetric(),  # v1
     ]
 
-    metrics_distribution(single_signs, all_metrics)
-
+    shutil.rmtree(ASSETS_DIR / "matches", ignore_errors=True)  # clear stale metric dirs (incl. old CLIPScore)
     find_closest_signs(hello_signs, single_signs, all_metrics)

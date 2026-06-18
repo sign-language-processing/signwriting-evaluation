@@ -3,3 +3,6 @@ build/
 signwriting_evaluation.egg-info/
 **/__pycache__/
 .env
+
+# quick-and-dirty metric calibration (human preference collection); not tracked
+/calibration/

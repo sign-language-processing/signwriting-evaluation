@@ -1,8 +1,8 @@
 import unittest
 
-from signwriting_evaluation.metrics.similarity import SignWritingSimilarityMetric
 from signwriting_evaluation.metrics.bleu import SignWritingBLEU
 from signwriting_evaluation.metrics.chrf import SignWritingCHRF
+from signwriting_evaluation.metrics.similarity import SignWritingSimilarityMetric
 
 
 class TestMetricsReturnFloat(unittest.TestCase):

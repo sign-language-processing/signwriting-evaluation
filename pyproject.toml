@@ -7,47 +7,53 @@ authors = [
 ]
 readme = "README.md"
 dependencies = [
-    "signwriting @ git+https://github.com/sign-language-processing/signwriting",
-    "sacrebleu", # For BLEU and chrF
-    # For Similarity
-    "numpy",
-    "scipy",
-    # For CLIP
-    "torch",
-    "transformers",
-    "diskcache",
+    # Core: FSW parsing, normalization, mirroring, and rendering — needed by every metric.
+    "signwriting>=0.1.9",
 ]
 
 [project.optional-dependencies]
+# Per-metric extras: install only what you use, e.g. `pip install signwriting-evaluation[similarity]`.
+bleu = ["sacrebleu"]
+chrf = ["sacrebleu"]
+# the SymbolsDistances metrics (v1 and v2); the Rust kernel accelerates v2 (falls back to Python if absent)
+similarity = ["numpy", "scipy", "signwriting-similarity-rs>=0.1.0"]
+clip = ["torch", "transformers", "diskcache"]
+all = ["signwriting-evaluation[bleu,chrf,similarity,clip]"]
 dev = [
+    "signwriting-evaluation[all]",
     "pytest",
-    "pylint",
+    "ruff",
     # to plot metric evaluation results
-    "matplotlib"
+    "matplotlib",
+    # to sample words (e.g. names) for text-correlation evaluation
+    "Faker",
+    # for mouthing G2P (English needs the flite `lex_lookup` binary on PATH)
+    "epitran",
 ]
 
 [tool.yapf]
 based_on_style = "google"
 column_limit = 120
 
-[tool.pylint]
-max-line-length = 120
-disable = [
-    "C0114", # Missing module docstring
-    "C0115", # Missing class docstring
-    "C0116", # Missing function or method docstring
-]
+[tool.ruff]
+line-length = 120
 
-[tool.pylint.typecheck]
-generated-members = [
-    "torch.*",
-]
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]  # pycodestyle errors/warnings, pyflakes, import sorting
 
 [tool.setuptools]
 packages = [
     "signwriting_evaluation",
     "signwriting_evaluation.metrics",
+    "signwriting_evaluation.metrics.bleu",
+    "signwriting_evaluation.metrics.chrf",
+    "signwriting_evaluation.metrics.clip",
+    "signwriting_evaluation.metrics.similarity",
+    "signwriting_evaluation.metrics.similarity_v2",
 ]
+
+[tool.setuptools.package-data]
+"signwriting_evaluation.metrics.similarity_v2" = ["base_symbol_names.json", "similarity_v2.md"]
 
 [tool.pytest.ini_options]
 addopts = "-v"

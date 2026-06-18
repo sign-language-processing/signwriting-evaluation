@@ -1,0 +1,80 @@
+name: Publish Rust kernel
+
+# Builds platform wheels for the signwriting_similarity_rs PyO3 extension (abi3, one wheel per
+# platform for Python 3.9+) and publishes them to PyPI, so `pip install signwriting-evaluation[similarity]`
+# pulls a prebuilt fast kernel instead of falling back to the pure-Python path.
+
+on:
+  release:
+    types: [ created ]
+
+jobs:
+  wheels:
+    name: wheels ${{ matrix.platform.target }} on ${{ matrix.platform.runner }}
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { runner: ubuntu-latest,  target: x86_64 }
+          - { runner: ubuntu-latest,  target: aarch64 }
+          - { runner: macos-13,       target: x86_64 }
+          - { runner: macos-latest,   target: aarch64 }
+          - { runner: windows-latest, target: x64 }
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set crate version from the release tag
+        shell: bash
+        run: |
+          version="${GITHUB_REF#refs/tags/}"; version="${version#v}"
+          sed -i.bak "s/^version = .*/version = \"${version}\"/" signwriting_similarity_rs/Cargo.toml signwriting_similarity_rs/pyproject.toml
+          rm -f signwriting_similarity_rs/*.bak
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.platform.target }}
+          args: --release --out dist -m signwriting_similarity_rs/Cargo.toml
+          manylinux: auto
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.platform.runner }}-${{ matrix.platform.target }}
+          path: dist
+
+  sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set crate version from the release tag
+        run: |
+          version="${GITHUB_REF#refs/tags/}"; version="${version#v}"
+          sed -i "s/^version = .*/version = \"${version}\"/" signwriting_similarity_rs/Cargo.toml signwriting_similarity_rs/pyproject.toml
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist -m signwriting_similarity_rs/Cargo.toml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-sdist
+          path: dist
+
+  publish:
+    name: Publish to PyPI
+    needs: [ wheels, sdist ]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/signwriting-similarity-rs
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
