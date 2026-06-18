@@ -6,3 +6,5 @@ signwriting_evaluation.egg-info/
 
 # quick-and-dirty metric calibration (human preference collection); not tracked
 /calibration/
+# maturin-compiled native extension (built from the signwriting_similarity_rs crate)
+signwriting_evaluation/_similarity_rs.*

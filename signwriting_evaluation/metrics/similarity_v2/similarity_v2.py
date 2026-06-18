@@ -342,7 +342,7 @@ class SignWritingSimilarityV2Metric(SignWritingMetric):
                  implicit: bool = True, touch_penalty: float = 2.299, mirror_penalty: float = 0.424,
                  movement_weight: float = 0.506, sequence_weight: float = 0.2, rust: bool = False):
         super().__init__("SymbolsDistancesV2")
-        # rust: route scoring through the compiled Rust kernel (signwriting_similarity_rs) for speed.
+        # rust: route scoring through the compiled Rust kernel (signwriting_evaluation._similarity_rs) for speed.
         # The kernel ports the full formula (separated identity/position cost, facial_scale, conditional
         # materialized implicit face, matching, length, reordering, direction). The two RENDERING-derived
         # refinements — pixel-accurate touch and color-change overlap weighting — cannot run in Rust, so
@@ -352,10 +352,9 @@ class SignWritingSimilarityV2Metric(SignWritingMetric):
         self._rs = None
         if rust:
             try:
-                import signwriting_similarity_rs as _rs  # noqa: PLC0415
-                # The crate directory is importable as an empty namespace package when the compiled
-                # extension has not been built (e.g. running from the repo without `maturin develop`);
-                # only use it if the kernel functions are actually present.
+                from signwriting_evaluation import _similarity_rs as _rs  # noqa: PLC0415
+                # Guard against the module being importable but empty (e.g. an editable install whose
+                # native extension was not built); only use it when its functions are present.
                 self._rs = _rs if hasattr(_rs, "score_single") else None
             except ImportError:
                 self._rs = None

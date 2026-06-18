@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "signwriting_similarity_rs"
+name = "_similarity_rs"
 crate-type = ["cdylib"]
 
 [dependencies]
