@@ -4,7 +4,7 @@ import os
 from collections import Counter
 from functools import cache
 from itertools import combinations
-from typing import Tuple, Optional, NamedTuple
+from typing import NamedTuple, Optional, Tuple
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -15,7 +15,13 @@ from signwriting.tokenizer import normalize_signwriting
 from signwriting.types import Sign, SignSymbol
 from signwriting.utils.mirror import mirror_sign
 from signwriting.visualizer.visualize import (
-    get_symbol_size, get_font, key2id, symbol_fill, symbol_line, signwriting_to_image)
+    get_font,
+    get_symbol_size,
+    key2id,
+    signwriting_to_image,
+    symbol_fill,
+    symbol_line,
+)
 
 from signwriting_evaluation.metrics.base import SignWritingMetric
 
@@ -721,10 +727,12 @@ class SignWritingSimilarityV2Metric(SignWritingMetric):
             for j, rs in enumerate(ref_signs):
                 pid = i * len(references) + j
                 if len(hs) == 1 and len(rs) == 1:
-                    direct_t[pid] = len(tasks); tasks.append((hs[0], rs[0]))
+                    direct_t[pid] = len(tasks)
+                    tasks.append((hs[0], rs[0]))
                     ms = mir_signs[j]
                     if do_mirror and ms is not None and len(ms) == 1:
-                        mirror_t[pid] = len(tasks); tasks.append((hs[0], ms[0]))
+                        mirror_t[pid] = len(tasks)
+                        tasks.append((hs[0], ms[0]))
                 else:
                     fallback.append((pid, i, j))
         scores = self._rs.score_single_many(tasks)

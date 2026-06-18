@@ -1,6 +1,6 @@
 import math
 from functools import cache
-from typing import Tuple, Optional, NamedTuple
+from typing import NamedTuple, Optional, Tuple
 
 import numpy as np
 from scipy.optimize import linear_sum_assignment

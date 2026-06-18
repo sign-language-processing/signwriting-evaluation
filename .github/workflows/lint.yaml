@@ -23,4 +23,4 @@ jobs:
         run: pip install .[dev]
 
       - name: Lint Code
-        run: pylint signwriting_evaluation
+        run: ruff check signwriting_evaluation

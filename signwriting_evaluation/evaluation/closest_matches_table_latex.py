@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long, duplicate-code
 from pathlib import Path
 
 METRIC_ORDER = ["SymbolsDistancesV2", "SymbolsDistances", "TokenizedBLEU", "CHRF", "CLIPScore"]
@@ -47,6 +46,6 @@ if __name__ == "__main__":
         print(f"        {' & '.join(row)} \\\\")
     print("        \\bottomrule")
     print("    \\end{tabular}")
-    print("    \\caption{Top 10 nearest neighbors for selected signs using different evaluation metrics. The reference signs are shown at the top, and the retrieved signs are displayed in order of decreasing similarity score from left to right.}")
+    print("    \\caption{Top 10 nearest neighbors for selected signs using different evaluation metrics. The reference signs are shown at the top, and the retrieved signs are displayed in order of decreasing similarity score from left to right.}")  # noqa: E501
     print("    \\label{tab:nearest_neighbors}")
     print("\\end{table*}")

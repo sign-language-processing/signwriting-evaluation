@@ -1,5 +1,4 @@
 from sacrebleu.metrics import BLEU
-
 from signwriting.tokenizer import SignWritingTokenizer
 
 from signwriting_evaluation.metrics.base import SignWritingMetric, validate_corpus_score_input

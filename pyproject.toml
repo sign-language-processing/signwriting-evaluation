@@ -21,7 +21,7 @@ all = ["signwriting-evaluation[bleu,chrf,similarity,clip]"]
 dev = [
     "signwriting-evaluation[all]",
     "pytest",
-    "pylint",
+    "ruff",
     # to plot metric evaluation results
     "matplotlib",
     # to sample words (e.g. names) for text-correlation evaluation
@@ -34,18 +34,11 @@ dev = [
 based_on_style = "google"
 column_limit = 120
 
-[tool.pylint]
-max-line-length = 120
-disable = [
-    "C0114", # Missing module docstring
-    "C0115", # Missing class docstring
-    "C0116", # Missing function or method docstring
-]
+[tool.ruff]
+line-length = 120
 
-[tool.pylint.typecheck]
-generated-members = [
-    "torch.*",
-]
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]  # pycodestyle errors/warnings, pyflakes, import sorting
 
 [tool.setuptools]
 packages = [

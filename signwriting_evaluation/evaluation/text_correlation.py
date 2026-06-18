@@ -8,7 +8,6 @@ import numpy as np
 from epitran import Epitran
 from faker import Faker
 from scipy.stats import pearsonr, spearmanr
-
 from signwriting.fingerspelling.fingerspelling import spell
 from signwriting.mouthing.mouthing import mouth_ipa
 

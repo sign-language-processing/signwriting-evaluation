@@ -3,8 +3,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
-
 from signwriting.visualizer.visualize import signwriting_to_image
+
 from signwriting_evaluation.metrics.base import SignWritingMetric
 from signwriting_evaluation.metrics.bleu import SignWritingBLEU
 from signwriting_evaluation.metrics.chrf import SignWritingCHRF

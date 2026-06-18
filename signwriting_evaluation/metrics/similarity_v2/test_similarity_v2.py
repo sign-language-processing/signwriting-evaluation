@@ -2,8 +2,11 @@ import unittest
 
 from signwriting.utils.mirror import mirror_sign
 
-from signwriting_evaluation.metrics.similarity_v2 import (SignWritingSimilarityV2Metric,
-                                                          get_shape_class_index, get_symbol_attributes)
+from signwriting_evaluation.metrics.similarity_v2 import (
+    SignWritingSimilarityV2Metric,
+    get_shape_class_index,
+    get_symbol_attributes,
+)
 
 
 class TestSignWritingSymbolDistance(unittest.TestCase):
@@ -21,7 +24,7 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         # The Rust kernel approximates the two rendering-derived factors (pixel-touch, color-change
         # overlap) with bounding-box tests, so it matches the Python path closely but not exactly.
         try:
-            import signwriting_similarity_rs  # noqa: F401,PLC0415  pylint: disable=unused-import
+            import signwriting_similarity_rs  # noqa: F401
         except ImportError:
             self.skipTest("signwriting_similarity_rs not built")
         rust = SignWritingSimilarityV2Metric(rust=True)

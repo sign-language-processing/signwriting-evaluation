@@ -14,12 +14,11 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.stats import pearsonr, spearmanr
-
 from signwriting.formats.fsw_to_sign import fsw_to_sign
 from signwriting.formats.swu_to_fsw import swu2fsw
 
-from signwriting_evaluation.metrics.similarity_v2 import SignWritingSimilarityV2Metric, get_symbol_attributes
 from signwriting_evaluation.evaluation.text_correlation import ASSETS_DIR
+from signwriting_evaluation.metrics.similarity_v2 import SignWritingSimilarityV2Metric, get_symbol_attributes
 
 DEFAULT_PREDICTIONS = Path.home() / "Downloads" / "eval_run20rt_prefix.jsonl"
 
