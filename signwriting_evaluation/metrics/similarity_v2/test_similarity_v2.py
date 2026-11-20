@@ -1,3 +1,4 @@
+import struct
 import unittest
 
 from signwriting.utils.mirror import mirror_sign
@@ -34,6 +35,42 @@ class TestSignWritingSymbolDistance(unittest.TestCase):
         for hypothesis, reference in pairs:
             self.assertAlmostEqual(self.metric.score(hypothesis, reference),
                                    rust.score(hypothesis, reference), delta=0.02)
+
+    def test_rust_score_matrix_matches_score_single(self):
+        # score_matrix prepares each sign once and tabulates identity costs; it must return exactly
+        # what score_single returns pair by pair, including when one side draws a face and the other
+        # does not, for an empty sign, and for a symbol the kernel does not know.
+        rust = SignWritingSimilarityV2Metric(rust=True)
+        self.assertIsNotNone(rust._rs, "native _similarity_rs kernel not built — build it before testing")
+        signs = ["M530x538S37602508x462S15a11493x494S20e00488x510S22f03469x517",
+                 "M519x534S37900497x466S3770b497x485S15a51491x501S22f03481x513",
+                 "M510x510S10000490x490S2ff00482x465",
+                 "M510x510S10000490x490S35000482x465",
+                 "M518x533S1870a489x515S18701482x490",
+                 "M542x522S15d39459x486S1f051471x478S1f056515x493S15d39510x486S20500462x480S20500532x492",
+                 "M510x510S10000490x490",
+                 "M510x510Sfff00490x490S10000490x490",
+                 ""]
+        raw = rust._rs.score_matrix(signs, signs[::-1])
+        self.assertEqual(len(raw), 8 * len(signs) ** 2)
+        matrix = [list(row) for row in struct.iter_unpack(f"<{len(signs)}d", raw)]
+        expected = [[rust._rs.score_single(h, r) for r in signs[::-1]] for h in signs]
+        self.assertEqual(matrix, expected)
+
+    def test_rust_score_all_matches_score(self):
+        # score_all batches single-sign pairs through score_matrix and falls back to score() for
+        # multi-sign ones; either way it must equal score() exactly.
+        rust = SignWritingSimilarityV2Metric(rust=True)
+        self.assertIsNotNone(rust._rs, "native _similarity_rs kernel not built — build it before testing")
+        one = "M530x538S37602508x462S15a11493x494S20e00488x510S22f03469x517"
+        two = "M519x534S37900497x466S3770b497x485S15a51491x501S22f03481x513"
+        three = "M518x533S1870a489x515S18701482x490"
+        hypotheses = [one, f"{one} {two}", three, mirror_sign(two)]
+        references = [two, three, f"{three} {one}", one]
+        expected = [[rust.score(h, r) for r in references] for h in hypotheses]
+        self.assertEqual(rust.score_all(hypotheses, references), expected)
+        self.assertEqual(rust.score_all([], references), [])
+        self.assertEqual(rust.score_all(hypotheses, []), [[], [], [], []])
 
     def test_score_is_symemtric(self):
         reference = "M519x534S37900497x466S3770b497x485S15a51491x501S22f03481x513"
