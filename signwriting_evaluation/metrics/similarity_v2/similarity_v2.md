@@ -812,10 +812,45 @@ the mirror wrapper (`mirror_fsw`, cached and exact) and multi-sign *sequence* as
 | v2 `score_all`, **rust batch (rayon)** | 83,000–210,000 | **54–112×** |
 
 `score_all` (and therefore `corpus_score`, `score_self`, and the eval/calibration scripts that go
-through it) batches every single-sign `(hyp, ref)` and `(hyp, mirror(ref))` pair into **one parallel
-Rust call with the GIL released**. The optimized single-sign kernel is ~24× over the Python core on
-its own (precomputed pairwise name-distance table, per-symbol cached class/name index, `FxHashMap`
-lookups, flat matrices); rayon adds the rest.
+through it) scores every single-sign hypothesis against every single-sign reference, and against the
+references' mirrors, in **two parallel all-pairs Rust calls with the GIL released** (`score_matrix`,
+below); pairs with a multi-sign side fall back to `score()`. The optimized single-sign kernel is ~24×
+over the Python core on its own (precomputed pairwise name-distance table, per-symbol cached
+class/name index, `FxHashMap` lookups, flat matrices); rayon adds the rest.
+
+**All-pairs scoring (`score_matrix`).** The kernel exposes three entry points: `score_single(hyp, ref)`,
+`score_single_many(pairs)` for an arbitrary list of pairs, and `score_matrix(hyps, refs)` for every
+hypothesis against every reference, which is the shape of `score_all` and of nearest-neighbour search
+over a corpus. `score_matrix` returns the `len(hyps) × len(refs)` matrix as row-major little-endian
+`f64` bytes (`np.frombuffer(raw, "<f8").reshape(len(hyps), len(refs))`). It computes the same formula
+through the same code as `score_single`, and **every score is bit-identical to `score_single` on that
+pair** (asserted in `test_rust_score_matrix_matches_score_single`, and checked on 10.2M pairs of real
+transcriptions). It is faster only because of work it does not repeat:
+
+- *Each sign is prepared once* rather than once per pair it appears in: the FSW parse, the sign with
+  its implicit face materialized (the form it takes against a sign that draws one), its centroid, and
+  its implicit head/contact counts.
+- *Identity costs are tabulated per hypothesis.* The identity half of a symbol pair's cost
+  (`(identity / max_distance) ^ norm_factor`) depends only on what the two symbols are, not where they
+  sit. The references' symbols are interned into their distinct identities (a few thousand for a
+  corpus of tens of thousands of signs), and each hypothesis symbol's cost against each of them is
+  computed once, so the per-pair cost matrix is filled by table lookups instead of a `pow` per cell.
+- *The per-pair path does not allocate.* The cost matrix, the Hungarian work arrays, and the factor
+  buffers are reused per thread; the leftover-symbol sets are flag arrays instead of hash sets.
+  `score_single_many` shares this path and gains from it too.
+
+Measured on real single-sign transcriptions (5.7 symbols per sign on average), Apple M-class, 12 cores,
+128 hypotheses × 80,000 references:
+
+| path | pairs/s |
+|---|---|
+| `score_single_many`, before | 2.75M |
+| `score_single_many`, allocation-free | 3.1M |
+| `score_matrix` | **11.5M** |
+
+`score_all` with the mirror check on 256 × 20,000 signs went from 1.03M to 2.85M pairs/s (each of its
+pairs is two kernel pairs; what remains is Python-side mirroring and list building). After these
+changes the Hungarian assignment itself is the largest remaining cost.
 
 **Parity.** Close but not exact: the two rendering-derived factors use bounding-box approximations in
 Rust (above), so per-pair scores match Python within ~0.02. Callers needing exact scores re-score the
