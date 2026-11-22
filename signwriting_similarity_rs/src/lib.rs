@@ -189,10 +189,10 @@ fn name_dist(d: &Data, a: &Sym, b: &Sym) -> f64 {
     // two head/face symbols are the same class -> never the full hand-vs-arrow distance
     if a.class == d.head_class && b.class == d.head_class { raw * d.facial_scale } else { raw }
 }
-#[inline]
-fn pair_cost(d: &Data, a: &Sym, ax: f64, ay: f64, b: &Sym, bx: f64, by: f64) -> f64 {
-    // identity (concave root, preserves spelling) + position (convex squared, jitter ~0); see symbols_score
-    if a.class < 0 || b.class < 0 { return 1.0; }
+// The identity half of a symbol pair's cost: what the two symbols are, wherever they sit. Concave root,
+// preserves spelling; see symbols_score. Infinite for an unknown symbol, which pair_cost caps at 1.
+fn identity_cost(d: &Data, a: &Sym, b: &Sym) -> f64 {
+    if a.class < 0 || b.class < 0 { return f64::INFINITY; }
     let ds = name_dist(d, a, b) * d.w_shape;
     let df = (a.facing as f64 - b.facing as f64) * d.w_facing;
     let dr = (a.angle as f64 - b.angle as f64) * d.w_angle;
@@ -200,16 +200,38 @@ fn pair_cost(d: &Data, a: &Sym, ax: f64, ay: f64, b: &Sym, bx: f64, by: f64) -> 
     let dz = if a.shape == b.shape { (a.size_index as f64 - b.size_index as f64).abs() * d.w_size } else { 0.0 };
     let identity = (ds * ds + df * df + dr * dr + dp * dp + dz * dz).sqrt()
         + (a.class - b.class).abs() as f64 * d.w_class;
-    let identity_cost = (identity / d.max_distance).powf(d.norm_factor);
+    (identity / d.max_distance).powf(d.norm_factor)
+}
+
+#[inline]
+fn pair_cost(d: &Data, identity_cost: f64, ax: f64, ay: f64, bx: f64, by: f64) -> f64 {
+    // identity + position (convex squared, jitter ~0)
     let position_cost = (((ax - bx).powi(2) + (ay - by).powi(2)).sqrt() / d.position_scale).powi(2);
     (identity_cost + position_cost).min(1.0)
 }
 
-fn hungarian(cost: &[f64], n: usize) -> Vec<usize> {
+// Reusable buffers for one scoring thread, so the per-pair hot path does not allocate.
+#[derive(Default)]
+struct Scratch {
+    identity: Vec<f64>, cost: Vec<f64>, hungarian: HungarianBuffers, matched: Vec<(usize, usize)>,
+    taken: Vec<bool>, leftover: Vec<usize>,
+    w: Vec<f64>, hp: Vec<(f64, f64)>, rp: Vec<(f64, f64)>, hpr: Vec<f64>, rpr: Vec<f64>,
+}
+
+#[derive(Default)]
+struct HungarianBuffers {
+    u: Vec<f64>, v: Vec<f64>, minv: Vec<f64>, p: Vec<usize>, way: Vec<usize>, used: Vec<bool>,
+    rc: Vec<usize>,  // result: the column assigned to each row
+}
+
+fn reset<T: Clone>(buffer: &mut Vec<T>, len: usize, value: T) { buffer.clear(); buffer.resize(len, value); }
+
+fn hungarian(cost: &[f64], n: usize, b: &mut HungarianBuffers) {
     let inf = f64::INFINITY;
-    let (mut u, mut v) = (vec![0.0; n + 1], vec![0.0; n + 1]);
-    let mut p = vec![0usize; n + 1]; let mut way = vec![0usize; n + 1];
-    let mut minv = vec![inf; n + 1]; let mut used = vec![false; n + 1];
+    let HungarianBuffers { u, v, minv, p, way, used, rc } = b;
+    reset(u, n + 1, 0.0); reset(v, n + 1, 0.0);
+    reset(p, n + 1, 0usize); reset(way, n + 1, 0usize);
+    reset(minv, n + 1, inf); reset(used, n + 1, false);
     for i in 1..=n {
         p[0] = i; let mut j0 = 0;
         minv.iter_mut().for_each(|x| *x = inf); used.iter_mut().for_each(|x| *x = false);
@@ -225,9 +247,8 @@ fn hungarian(cost: &[f64], n: usize) -> Vec<usize> {
         }
         loop { let j1 = way[j0]; p[j0] = p[j1]; j0 = j1; if j0 == 0 { break; } }
     }
-    let mut rc = vec![0usize; n];
+    reset(rc, n, 0usize);
     for j in 1..=n { rc[p[j] - 1] = j - 1; }
-    rc
 }
 
 fn centroid(s: &[Sym]) -> (f64, f64) {
@@ -246,9 +267,10 @@ fn principal_axis(pos: &[(f64, f64)]) -> Option<(f64, f64)> {
     Some((vx / n, vy / n))
 }
 
-fn discordant_fraction(hp: &[(f64, f64)], rp: &[(f64, f64)], axis: (f64, f64), w: &[f64]) -> f64 {
-    let proj = |p: &[(f64, f64)]| -> Vec<f64> { p.iter().map(|&(x, y)| x * axis.0 + y * axis.1).collect() };
-    let (hpr, rpr) = (proj(hp), proj(rp));
+fn discordant_fraction(hp: &[(f64, f64)], rp: &[(f64, f64)], axis: (f64, f64), w: &[f64],
+                       hpr: &mut Vec<f64>, rpr: &mut Vec<f64>) -> f64 {
+    hpr.clear(); hpr.extend(hp.iter().map(|&(x, y)| x * axis.0 + y * axis.1));
+    rpr.clear(); rpr.extend(rp.iter().map(|&(x, y)| x * axis.0 + y * axis.1));
     let n = hp.len();
     let (mut num, mut den) = (0.0, 0.0);
     for i in 0..n { for j in (i + 1)..n {
@@ -295,14 +317,21 @@ fn unexplained_penalty(d: &Data, leftover: &[usize], s: &[Sym], mut head: i64, m
     penalty
 }
 
-fn implicit_length_acc(d: &Data, hyp: &[Sym], ref_: &[Sym], matched: &[(usize, usize)]) -> f64 {
-    let mh: std::collections::HashSet<usize> = matched.iter().map(|&(r, _)| r).collect();
-    let mr: std::collections::HashSet<usize> = matched.iter().map(|&(_, c)| c).collect();
-    let lh: Vec<usize> = (0..hyp.len()).filter(|i| !mh.contains(i)).collect();
-    let lr: Vec<usize> = (0..ref_.len()).filter(|j| !mr.contains(j)).collect();
-    let (hh, hc) = implicit_classes(d, hyp);
-    let (rh, rc) = implicit_classes(d, ref_);
-    let unexplained = unexplained_penalty(d, &lr, ref_, hh, hc) + unexplained_penalty(d, &lh, hyp, rh, rc);
+// The indices in 0..len that `matched` does not cover, ascending.
+fn unmatched(len: usize, matched: impl Iterator<Item = usize>, taken: &mut Vec<bool>, out: &mut Vec<usize>) {
+    reset(taken, len, false);
+    for i in matched { taken[i] = true; }
+    out.clear(); out.extend((0..len).filter(|&i| !taken[i]));
+}
+
+fn implicit_length_acc(d: &Data, hyp: &Form, ref_: &Form, matched: &[(usize, usize)],
+                       taken: &mut Vec<bool>, leftover: &mut Vec<usize>) -> f64 {
+    let ((hh, hc), (rh, rc)) = (hyp.implicit, ref_.implicit);
+    let (hyp, ref_) = (&hyp.syms[..], &ref_.syms[..]);
+    unmatched(ref_.len(), matched.iter().map(|&(_, c)| c), taken, leftover);
+    let ref_penalty = unexplained_penalty(d, leftover, ref_, hh, hc);
+    unmatched(hyp.len(), matched.iter().map(|&(r, _)| r), taken, leftover);
+    let unexplained = ref_penalty + unexplained_penalty(d, leftover, hyp, rh, rc);
     (unexplained / (hyp.len().max(ref_.len()) as f64 + 1.0)).min(1.0)
 }
 
@@ -312,41 +341,53 @@ fn overlap(d: &Data, a: &Sym, b: &Sym) -> bool {
     ox * oy >= d.overlap_fraction * (a.sw * a.sh).min(b.sw * b.sh)
 }
 
-fn score_parsed(d: &Data, hyp: &[Sym], ref_: &[Sym]) -> f64 {
+// `identity(i, j)` is the identity cost of hyp symbol i and ref symbol j: computed on the spot for a
+// single pair, read from a precomputed table when one sign is scored against many (score_matrix).
+fn score_parsed(d: &Data, hyp_form: &Form, ref_form: &Form, identity: impl Fn(usize, usize) -> f64,
+                scratch: &mut Scratch) -> f64 {
+    let Scratch { identity: identities, cost, hungarian: assignment, matched, taken, leftover, w, hp, rp, hpr, rpr }
+        = scratch;
+    let (hyp, ref_) = (&hyp_form.syms[..], &ref_form.syms[..]);
     if hyp.is_empty() || ref_.is_empty() { return 0.0; }
     let (m, n) = (hyp.len(), ref_.len());
-    let hc = centroid(hyp); let rc = centroid(ref_);
+    let hc = hyp_form.centroid; let rc = ref_form.centroid;
     let k = m.max(n);
-    let mut cost = vec![1e6; k * k];
+    reset(cost, k * k, 1e6);
+    identities.clear();
     for i in 0..m { for j in 0..n {
-        cost[i * k + j] = pair_cost(d, &hyp[i], hyp[i].x - hc.0, hyp[i].y - hc.1, &ref_[j], ref_[j].x - rc.0, ref_[j].y - rc.1);
+        identities.push(identity(i, j));
+        cost[i * k + j] = pair_cost(d, identities[i * n + j],
+                                    hyp[i].x - hc.0, hyp[i].y - hc.1, ref_[j].x - rc.0, ref_[j].y - rc.1);
     }}
-    let rcv = hungarian(&cost, k);
-    let matched: Vec<(usize, usize)> = (0..k).map(|r| (r, rcv[r])).filter(|&(r, c)| r < m && c < n).collect();
+    hungarian(cost, k, assignment);
+    matched.clear();
+    matched.extend((0..k).map(|r| (r, assignment.rc[r])).filter(|&(r, c)| r < m && c < n));
     let cnt = matched.len() as f64;
     // mean cost (re-align by matched-pair offset)
     let (mut hx, mut hy, mut rx, mut ry) = (0.0, 0.0, 0.0, 0.0);
-    for &(r, c) in &matched { hx += hyp[r].x; hy += hyp[r].y; rx += ref_[c].x; ry += ref_[c].y; }
+    for &(r, c) in matched.iter() { hx += hyp[r].x; hy += hyp[r].y; rx += ref_[c].x; ry += ref_[c].y; }
     let off = (hx / cnt - rx / cnt, hy / cnt - ry / cnt);
     let mean_cost: f64 = matched.iter().map(|&(r, c)|
-        pair_cost(d, &hyp[r], hyp[r].x - off.0, hyp[r].y - off.1, &ref_[c], ref_[c].x, ref_[c].y)).sum::<f64>() / cnt;
-    let length_acc = implicit_length_acc(d, hyp, ref_, &matched);
+        pair_cost(d, identities[r * n + c], hyp[r].x - off.0, hyp[r].y - off.1, ref_[c].x, ref_[c].y)).sum::<f64>() / cnt;
+    let length_acc = implicit_length_acc(d, hyp_form, ref_form, matched, taken, leftover);
     let length_weight = length_acc.powf(d.exp_factor);
     let error_rate = length_weight + mean_cost * (1.0 - length_weight);
     let mut score = (1.0 - error_rate).powi(2);
 
     // --- reordering factor ---
     if d.reordering_weight > 0.0 && m >= 2 && n >= 2 && matched.len() >= 2 {
-        let w: Vec<f64> = matched.iter().map(|&(r, c)| 1.0 - cost[r * k + c]).collect();
-        let mut hp: Vec<(f64, f64)> = matched.iter().map(|&(r, _)| (hyp[r].x, hyp[r].y)).collect();
-        let mut rp: Vec<(f64, f64)> = matched.iter().map(|&(_, c)| (ref_[c].x, ref_[c].y)).collect();
+        w.clear(); w.extend(matched.iter().map(|&(r, c)| 1.0 - cost[r * k + c]));
+        hp.clear(); hp.extend(matched.iter().map(|&(r, _)| (hyp[r].x, hyp[r].y)));
+        rp.clear(); rp.extend(matched.iter().map(|&(_, c)| (ref_[c].x, ref_[c].y)));
         let hm = (hp.iter().map(|p| p.0).sum::<f64>() / cnt, hp.iter().map(|p| p.1).sum::<f64>() / cnt);
         let rm = (rp.iter().map(|p| p.0).sum::<f64>() / cnt, rp.iter().map(|p| p.1).sum::<f64>() / cnt);
         for p in hp.iter_mut() { p.0 -= hm.0; p.1 -= hm.1; }
         for p in rp.iter_mut() { p.0 -= rm.0; p.1 -= rm.1; }
-        let axes: Vec<(f64, f64)> = [principal_axis(&hp), principal_axis(&rp)].into_iter().flatten().collect();
-        if !axes.is_empty() {
-            let disc: f64 = axes.iter().map(|&ax| discordant_fraction(&hp, &rp, ax, &w)).sum::<f64>() / axes.len() as f64;
+        let axes = [principal_axis(hp), principal_axis(rp)];
+        let axis_count = axes.iter().flatten().count();
+        if axis_count > 0 {
+            let disc: f64 = axes.iter().flatten().map(|&ax| discordant_fraction(hp, rp, ax, w, hpr, rpr)).sum::<f64>()
+                / axis_count as f64;
             score *= (-d.reordering_weight * disc).exp();
         }
     }
@@ -367,7 +408,7 @@ fn score_parsed(d: &Data, hyp: &[Sym], ref_: &[Sym]) -> f64 {
     // --- direction factor ---
     if d.movement_weight > 0.0 {
         let mut total = 0.0;
-        for &(r, c) in &matched {
+        for &(r, c) in matched.iter() {
             if hyp[r].shape != ref_[c].shape { continue; }
             let da = (hyp[r].angle as i32 - ref_[c].angle as i32).abs();
             let angle = da.min(16 - da) as f64 / 8.0;
@@ -391,19 +432,46 @@ fn add_face(d: &Data, s: &[Sym]) -> Vec<Sym> {
     out
 }
 
-fn score_materialized(d: &Data, mut h: Vec<Sym>, mut r: Vec<Sym>) -> f64 {
-    match (has_face(d, &h), has_face(d, &r)) {
-        (true, false) => r = add_face(d, &r),
-        (false, true) => h = add_face(d, &h),
-        _ => {}
+// One way a sign enters a comparison, with the per-sign quantities scoring needs. `ids` indexes each
+// symbol's identity in a shared list; it is only filled for the reference side of score_matrix.
+struct Form { syms: Vec<Sym>, ids: Vec<u32>, centroid: (f64, f64), implicit: (i64, i64) }
+
+fn form(d: &Data, syms: Vec<Sym>) -> Form {
+    let centroid = if syms.is_empty() { (0.0, 0.0) } else { centroid(&syms) };
+    let implicit = implicit_classes(d, &syms);
+    Form { syms, ids: Vec::new(), centroid, implicit }
+}
+
+// A parsed sign, prepared once so it can be scored against many others: as written, and (for a sign
+// that draws no face) with the implicit face materialized, which is the form it takes against a sign
+// that does draw one.
+struct Prepared { has_face: bool, plain: Form, faced: Option<Form> }
+
+fn prepare(d: &Data, fsw: &str) -> Prepared {
+    let syms = parse_sign(d, fsw);
+    let has_face = has_face(d, &syms);
+    let faced = if has_face { None } else { Some(form(d, add_face(d, &syms))) };
+    Prepared { has_face, plain: form(d, syms), faced }
+}
+
+// The forms two signs take against each other, and whether the hyp is the one given a face.
+fn forms<'a>(h: &'a Prepared, r: &'a Prepared) -> (&'a Form, &'a Form, bool) {
+    match (h.has_face, r.has_face) {
+        (true, false) => (&h.plain, r.faced.as_ref().unwrap(), false),
+        (false, true) => (h.faced.as_ref().unwrap(), &r.plain, true),
+        _ => (&h.plain, &r.plain, false),
     }
-    score_parsed(d, &h, &r)
+}
+
+fn score_pair(d: &Data, hyp: &str, ref_: &str, scratch: &mut Scratch) -> f64 {
+    let (h, r) = (prepare(d, hyp), prepare(d, ref_));
+    let (hf, rf, _) = forms(&h, &r);
+    score_parsed(d, hf, rf, |i, j| identity_cost(d, &hf.syms[i], &rf.syms[j]), scratch)
 }
 
 #[pyfunction]
 fn score_single(hyp: &str, ref_: &str) -> f64 {
-    let d = data();
-    score_materialized(d, parse_sign(d, hyp), parse_sign(d, ref_))
+    score_pair(data(), hyp, ref_, &mut Scratch::default())
 }
 
 // Batch: many single-sign (hyp, ref) FSW pairs, scored in parallel with the GIL released.
@@ -411,12 +479,65 @@ fn score_single(hyp: &str, ref_: &str) -> f64 {
 fn score_single_many(py: Python, pairs: Vec<(String, String)>) -> Vec<f64> {
     let d = data();
     py.allow_threads(|| pairs.par_iter()
-        .map(|(h, r)| score_materialized(d, parse_sign(d, h), parse_sign(d, r))).collect())
+        .map_init(Scratch::default, |scratch, (h, r)| score_pair(d, h, r, scratch)).collect())
+}
+
+// Everything identity_cost reads from a symbol.
+type Identity = (u32, u8, u8, bool, u8, i32, i32);
+
+// Give every symbol of the forms an index into the returned list of distinct symbol identities, so
+// identity costs against them can be tabulated once per hyp instead of recomputed for every pair.
+fn intern_identities<'a>(forms: impl Iterator<Item = &'a mut Form>) -> Vec<Sym> {
+    let mut index: FxHashMap<Identity, u32> = FxHashMap::default();
+    let mut distinct = Vec::new();
+    for form in forms {
+        form.ids = form.syms.iter().map(|s| {
+            *index.entry((s.shape, s.facing, s.angle, s.parallel, s.size_index, s.class, s.nidx)).or_insert_with(|| {
+                distinct.push(*s);
+                distinct.len() as u32 - 1
+            })
+        }).collect();
+    }
+    distinct
+}
+
+// Row i holds the identity cost of the form's symbol i against each distinct reference identity.
+fn identity_table(d: &Data, form: &Form, distinct: &[Sym]) -> Vec<f64> {
+    form.syms.iter().flat_map(|a| distinct.iter().map(move |b| identity_cost(d, a, b))).collect()
+}
+
+// All pairs: every hyp against every ref, each FSW parsed once. Returns the len(hyps) x len(refs)
+// score matrix as row-major little-endian f64 bytes (numpy: frombuffer(..., "<f8").reshape(h, r)).
+// Every score equals score_single on that pair exactly.
+#[pyfunction]
+fn score_matrix<'py>(py: Python<'py>, hyps: Vec<String>, refs: Vec<String>) -> Bound<'py, pyo3::types::PyBytes> {
+    let d = data();
+    let bytes: Vec<u8> = py.allow_threads(|| {
+        let h: Vec<Prepared> = hyps.par_iter().map(|s| prepare(d, s)).collect();
+        let mut r: Vec<Prepared> = refs.par_iter().map(|s| prepare(d, s)).collect();
+        let distinct = intern_identities(r.iter_mut().flat_map(|p| std::iter::once(&mut p.plain).chain(p.faced.as_mut())));
+        let (r, distinct, width) = (&r, &distinct, distinct.len());
+        h.par_iter()
+            .flat_map_iter(|a| {
+                let mut scratch = Scratch::default();
+                let plain = identity_table(d, &a.plain, distinct);
+                let faced = a.faced.as_ref().map(|form| identity_table(d, form, distinct));
+                r.iter().flat_map(move |b| {
+                    let (hf, rf, hyp_faced) = forms(a, b);
+                    let table = if hyp_faced { faced.as_ref().unwrap() } else { &plain };
+                    score_parsed(d, hf, rf, |i, j| table[i * width + rf.ids[j] as usize], &mut scratch)
+                        .to_le_bytes()
+                })
+            })
+            .collect()
+    });
+    pyo3::types::PyBytes::new_bound(py, &bytes)
 }
 
 #[pymodule]
 fn _similarity_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(score_single, m)?)?;
     m.add_function(wrap_pyfunction!(score_single_many, m)?)?;
+    m.add_function(wrap_pyfunction!(score_matrix, m)?)?;
     Ok(())
 }

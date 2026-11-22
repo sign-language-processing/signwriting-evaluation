@@ -713,39 +713,37 @@ class SignWritingSimilarityV2Metric(SignWritingMetric):
         return max(direct, self.mirror_penalty * directed(hypothesis, mirrored))
 
     def score_all(self, hypotheses, references, progress_bar=False) -> list[list[float]]:
-        # Rust fast path: batch every single-sign (hyp, ref) and (hyp, mirror(ref)) pair into one
-        # parallel Rust call (GIL released); multi-sign pairs fall back to per-pair score().
+        # Rust fast path: score every single-sign hypothesis against every single-sign reference (and
+        # its mirror) in one parallel all-pairs Rust call (GIL released, each sign parsed once); pairs
+        # with a multi-sign side fall back to per-pair score().
         if self._rs is None:
             return super().score_all(hypotheses, references, progress_bar)
         hyp_signs = [text_to_signs(h) for h in hypotheses]
         ref_signs = [text_to_signs(r) for r in references]
-        do_mirror = self.mirror_penalty > 0
-        mir_signs = [text_to_signs(m) if (do_mirror and (m := mirror_fsw(r))) else None for r in references]
-        tasks: list[tuple[str, str]] = []
-        direct_t = [-1] * (len(hypotheses) * len(references))
-        mirror_t = [-1] * (len(hypotheses) * len(references))
-        fallback = []
-        for i, hs in enumerate(hyp_signs):
-            for j, rs in enumerate(ref_signs):
-                pid = i * len(references) + j
-                if len(hs) == 1 and len(rs) == 1:
-                    direct_t[pid] = len(tasks)
-                    tasks.append((hs[0], rs[0]))
-                    ms = mir_signs[j]
-                    if do_mirror and ms is not None and len(ms) == 1:
-                        mirror_t[pid] = len(tasks)
-                        tasks.append((hs[0], ms[0]))
-                else:
-                    fallback.append((pid, i, j))
-        scores = self._rs.score_single_many(tasks)
-        flat = [0.0] * (len(hypotheses) * len(references))
-        for pid in range(len(flat)):
-            if direct_t[pid] < 0:
-                continue
-            val = scores[direct_t[pid]]
-            if mirror_t[pid] >= 0:
-                val = max(val, self.mirror_penalty * scores[mirror_t[pid]])
-            flat[pid] = val
-        for pid, i, j in fallback:
-            flat[pid] = self.score(hypotheses[i], references[j])
-        return [flat[i * len(references):(i + 1) * len(references)] for i in range(len(hypotheses))]
+        rows = [i for i, signs in enumerate(hyp_signs) if len(signs) == 1]
+        cols = [j for j, signs in enumerate(ref_signs) if len(signs) == 1]
+        scores = np.zeros((len(hypotheses), len(references)))
+        if rows and cols:
+            hyps = [hyp_signs[i][0] for i in rows]
+
+            def matrix(refs):
+                raw = self._rs.score_matrix(hyps, refs)
+                return np.frombuffer(raw, dtype="<f8").reshape(len(hyps), len(refs))
+
+            block = matrix([ref_signs[j][0] for j in cols])
+            if self.mirror_penalty > 0:
+                # A reference that cannot be mirrored into a single sign keeps its direct score.
+                mirrors = [text_to_signs(m) if (m := mirror_fsw(references[j])) else () for j in cols]
+                mirrored = [k for k, signs in enumerate(mirrors) if len(signs) == 1]
+                if mirrored:
+                    block = block.copy()
+                    block[:, mirrored] = np.maximum(
+                        block[:, mirrored], self.mirror_penalty * matrix([mirrors[k][0] for k in mirrored]))
+            scores[np.ix_(rows, cols)] = block
+        scores = scores.tolist()
+        single_rows = set(rows)
+        multi_cols = [j for j, signs in enumerate(ref_signs) if len(signs) != 1]
+        for i in range(len(hypotheses)):
+            for j in (multi_cols if i in single_rows else range(len(references))):
+                scores[i][j] = self.score(hypotheses[i], references[j])
+        return scores
